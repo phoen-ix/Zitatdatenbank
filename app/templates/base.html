@@ -8,6 +8,9 @@
     <title>{% block title %}{{ site_name }}{% endblock %}</title>
     <link href="{{ url_for('static', filename='vendor/css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/bootstrap-icons.css') }}">
+    {% if theme.get('body_class') %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    {% endif %}
     <style>
         :root {
             --theme-navbar: {{ theme.color_navbar }};
@@ -96,7 +99,7 @@
         .navbar-brand { font-weight: bold; }
     </style>
 </head>
-<body>
+<body class="{{ theme.get('body_class', '') }}">
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
@@ -204,6 +207,59 @@
         if (e.target.dataset.confirm && !confirm(e.target.dataset.confirm)) e.preventDefault();
     }, true);
     </script>
+    {% if theme.get('body_class') == 'theme-unterwasser' %}
+    <script nonce="{{ csp_nonce }}">
+    (function(){
+        var c=document.createElement('div');c.className='bubble-container';
+        document.body.appendChild(c);
+        for(var i=0;i<15;i++){
+            var b=document.createElement('div');b.className='bubble';
+            var size=8+Math.random()*20;
+            b.style.width=size+'px';b.style.height=size+'px';
+            b.style.left=Math.random()*100+'%';
+            b.style.animationDuration=(8+Math.random()*12)+'s';
+            b.style.animationDelay=Math.random()*10+'s';
+            c.appendChild(b);
+        }
+    })();
+    </script>
+    {% elif theme.get('body_class') == 'theme-kosmos' %}
+    <script nonce="{{ csp_nonce }}">
+    (function(){
+        var c=document.createElement('div');c.className='stars-container';
+        document.body.appendChild(c);
+        for(var i=0;i<80;i++){
+            var s=document.createElement('div');s.className='star';
+            var size=1+Math.random()*2.5;
+            s.style.width=size+'px';s.style.height=size+'px';
+            s.style.top=Math.random()*100+'%';
+            s.style.left=Math.random()*100+'%';
+            s.style.animationDuration=(2+Math.random()*4)+'s';
+            s.style.animationDelay=Math.random()*4+'s';
+            c.appendChild(s);
+        }
+    })();
+    </script>
+    {% elif theme.get('body_class') == 'theme-feuer' %}
+    <script nonce="{{ csp_nonce }}">
+    (function(){
+        var c=document.createElement('div');c.className='ember-container';
+        document.body.appendChild(c);
+        var colors=['#ff6b35','#ff8c00','#ff4500','#ffa500','#ff6347'];
+        for(var i=0;i<20;i++){
+            var e=document.createElement('div');e.className='ember';
+            var size=2+Math.random()*4;
+            e.style.width=size+'px';e.style.height=size+'px';
+            e.style.left=Math.random()*100+'%';
+            e.style.background=colors[Math.floor(Math.random()*colors.length)];
+            e.style.boxShadow='0 0 '+(size*2)+'px '+e.style.background;
+            e.style.animationDuration=(4+Math.random()*8)+'s';
+            e.style.animationDelay=Math.random()*6+'s';
+            c.appendChild(e);
+        }
+    })();
+    </script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

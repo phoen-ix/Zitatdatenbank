@@ -56,13 +56,13 @@
                     <h5 class="mb-3">{{ _('theme_select') }}</h5>
                     <div class="row mb-4">
                         {% for key, t in themes.items() %}
-                        <div class="col-md-4 col-lg-2 mb-3">
-                            <div class="card {% if current_theme == key %}border-primary{% endif %}" style="cursor:pointer" onclick="document.getElementById('theme_{{ key }}').checked=true">
-                                <div style="height:40px;background-color:{{ t.color_navbar }};border-radius:4px 4px 0 0;"></div>
+                        <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-3">
+                            <div class="card {% if current_theme == key %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" onclick="document.getElementById('theme_{{ key }}').checked=true">
+                                <div style="height:40px;{% if t.get('preview_css') %}{{ t.preview_css }}{% else %}background-color:{{ t.color_navbar }}{% endif %};border-radius:4px 4px 0 0;"></div>
                                 <div class="card-body p-2 text-center" style="background-color:{{ t.color_bg }};color:{{ t.color_text }}">
                                     <input type="radio" name="theme_name" value="{{ key }}" id="theme_{{ key }}"
                                            {% if current_theme == key %}checked{% endif %} class="form-check-input">
-                                    <label for="theme_{{ key }}" class="form-check-label ms-1">{{ t.label }}</label>
+                                    <label for="theme_{{ key }}" class="form-check-label ms-1" style="font-size:0.85em">{{ t.label }}{% if t.get('body_class') %} <i class="bi bi-stars"></i>{% endif %}</label>
                                 </div>
                             </div>
                         </div>
