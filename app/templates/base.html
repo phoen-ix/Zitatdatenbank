@@ -303,30 +303,51 @@
         }
         var els = document.querySelectorAll('.quote-text');
         if (!els.length) return;
-        var el = els[0];
-        var fullText = el.textContent;
-        if (!fullText || fullText.length > 600) return;
-        el.textContent = '';
-        el.classList.add('typing-active');
-        var cursor = document.createElement('span');
-        cursor.className = 'typing-cursor';
-        cursor.textContent = cursorChar;
-        el.appendChild(cursor);
-        var i = 0;
-        function typeChar() {
-            if (i < fullText.length) {
-                el.insertBefore(document.createTextNode(fullText[i]), cursor);
-                i++;
-                var extra = 0;
-                if (hasPause && (fullText[i-1] === ' ' || fullText[i-1] === ',' || fullText[i-1] === '.')) {
-                    extra = typingSpeed * 2;
+        function animateEl(el, delay) {
+            // Build a list of items: characters and <br> markers
+            var items = [];
+            var nodes = el.childNodes;
+            for (var n = 0; n < nodes.length; n++) {
+                if (nodes[n].nodeType === 3) { // text node
+                    var txt = nodes[n].textContent;
+                    for (var c = 0; c < txt.length; c++) items.push(txt[c]);
+                } else if (nodes[n].nodeName === 'BR') {
+                    items.push('BR');
                 }
-                setTimeout(typeChar, typingSpeed + extra + Math.random() * typingSpeed * 0.5);
-            } else {
-                setTimeout(function(){ cursor.style.display = 'none'; }, 2000);
             }
+            if (!items.length || items.length > 600) return;
+            el.innerHTML = '';
+            el.classList.add('typing-active');
+            var cursor = document.createElement('span');
+            cursor.className = 'typing-cursor';
+            cursor.textContent = cursorChar;
+            el.appendChild(cursor);
+            var i = 0;
+            function typeChar() {
+                if (i < items.length) {
+                    if (items[i] === 'BR') {
+                        el.insertBefore(document.createElement('br'), cursor);
+                    } else {
+                        el.insertBefore(document.createTextNode(items[i]), cursor);
+                    }
+                    var ch = items[i];
+                    i++;
+                    var extra = 0;
+                    if (ch === 'BR') {
+                        extra = typingSpeed * 3;
+                    } else if (hasPause && (ch === ' ' || ch === ',' || ch === '.')) {
+                        extra = typingSpeed * 2;
+                    }
+                    setTimeout(typeChar, typingSpeed + extra + Math.random() * typingSpeed * 0.5);
+                } else {
+                    setTimeout(function(){ cursor.style.display = 'none'; }, 2000);
+                }
+            }
+            setTimeout(typeChar, delay);
         }
-        setTimeout(typeChar, 300);
+        for (var j = 0; j < els.length; j++) {
+            animateEl(els[j], 300 + j * 150);
+        }
     })();
     </script>
     {% endif %}

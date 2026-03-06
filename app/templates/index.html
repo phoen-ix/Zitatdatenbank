@@ -14,7 +14,7 @@
             <div class="card-body">
                 {% if random_quote %}
                 <blockquote class="blockquote mb-0">
-                    <p class="quote-text">{{ random_quote.text }}</p>
+                    <p class="quote-text">{{ random_quote.text|nlbr }}</p>
                     <footer class="blockquote-footer mt-2">
                         {% if random_quote.author %}
                         <a href="{{ url_for('main.browse', author=random_quote.author) }}" class="quote-author text-decoration-none">

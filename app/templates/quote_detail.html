@@ -12,7 +12,7 @@
 <div class="card mb-4">
     <div class="card-body">
         <blockquote class="blockquote mb-0">
-            <p class="quote-text">{{ quote.text }}</p>
+            <p class="quote-text">{{ quote.text|nlbr }}</p>
             <footer class="blockquote-footer mt-3">
                 {% if quote.author %}
                 <a href="{{ url_for('main.browse', author=quote.author) }}" class="quote-author text-decoration-none">

@@ -8,6 +8,7 @@ from datetime import datetime
 
 import click
 from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify
+from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash
 
 from extensions import db, csrf, migrate, limiter, login_manager
@@ -75,6 +76,14 @@ import models  # noqa: F401
 
 from routes import register_blueprints
 register_blueprints(app)
+
+
+@app.template_filter('nlbr')
+def nl_br_filter(text):
+    """Convert // line breaks in quotes to <br> tags."""
+    if not text:
+        return text
+    return Markup(escape(text).replace(' // ', Markup('<br>')).replace('//', Markup('<br>')))
 
 
 @login_manager.user_loader

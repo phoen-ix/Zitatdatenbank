@@ -24,7 +24,7 @@
 {% for quote in quotes %}
 <div class="card mb-3">
     <div class="card-body">
-        <p class="quote-text mb-2">{{ quote.text[:300] }}{% if quote.text|length > 300 %}...{% endif %}</p>
+        <p class="quote-text mb-2">{{ quote.text|truncate(300, True)|nlbr }}</p>
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 {% if quote.author %}
