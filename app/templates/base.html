@@ -260,6 +260,57 @@
     })();
     </script>
     {% endif %}
+    {% if theme.get('body_class') %}
+    <script nonce="{{ csp_nonce }}">
+    (function(){
+        var speeds = {
+            'theme-hacker': {delay:18, pause:0, cursor:'\u2588'},
+            'theme-typewriter': {delay:45, pause:80, cursor:'|'},
+            'theme-neon': {delay:22, pause:0, cursor:'\u2588'},
+            'theme-pergament': {delay:25, pause:0, cursor:'\u270E'},
+            'theme-vaporwave': {delay:20, pause:0, cursor:'_'},
+            'theme-aurora': {delay:25, pause:0, cursor:'\u2588'},
+            'theme-unterwasser': {delay:30, pause:0, cursor:'~'},
+            'theme-kosmos': {delay:22, pause:0, cursor:'\u2022'},
+            'theme-feuer': {delay:20, pause:0, cursor:'\u2588'}
+        };
+        var body = document.body.className.trim();
+        var cfg = null;
+        for (var k in speeds) {
+            if (body.indexOf(k) !== -1) { cfg = speeds[k]; break; }
+        }
+        if (!cfg) return;
+        var els = document.querySelectorAll('.quote-text');
+        if (!els.length) return;
+        /* Only animate the first quote-text on the page (hero/detail) */
+        var el = els[0];
+        var fullText = el.textContent;
+        if (!fullText || fullText.length > 600) return;
+        el.textContent = '';
+        el.classList.add('typing-active');
+        var cursor = document.createElement('span');
+        cursor.className = 'typing-cursor';
+        cursor.textContent = cfg.cursor;
+        el.appendChild(cursor);
+        var i = 0;
+        function typeChar() {
+            if (i < fullText.length) {
+                el.insertBefore(document.createTextNode(fullText[i]), cursor);
+                i++;
+                var extra = 0;
+                if (cfg.pause && (fullText[i-1] === ' ' || fullText[i-1] === ',' || fullText[i-1] === '.')) {
+                    extra = cfg.pause;
+                }
+                setTimeout(typeChar, cfg.delay + extra + Math.random() * cfg.delay * 0.5);
+            } else {
+                setTimeout(function(){ cursor.style.display = 'none'; }, 2000);
+            }
+        }
+        /* Start after a small delay */
+        setTimeout(typeChar, 300);
+    })();
+    </script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>
