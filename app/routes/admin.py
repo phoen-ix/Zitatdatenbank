@@ -130,14 +130,28 @@ def settings():
 
         elif tab == 'themes':
             theme_name = request.form.get('theme_name', DEFAULT_THEME)
+            previous_theme = get_setting('theme_name', DEFAULT_THEME)
             if theme_name in THEMES or theme_name == 'custom':
                 set_setting('theme_name', theme_name)
+                # Only save color/effect overrides when customizing the SAME theme.
+                # When switching themes, just apply defaults (avoids stale values
+                # from the previous theme being saved as overrides).
+                theme_changed = theme_name != previous_theme
+                if theme_changed and theme_name in THEMES:
+                    # Clear any stale overrides for the new theme
+                    stale = Setting.query.filter(
+                        Setting.key.like(f'theme_{theme_name}_%')
+                    ).all()
+                    for row in stale:
+                        db.session.delete(row)
+                    if stale:
+                        db.session.commit()
                 if theme_name == 'custom':
                     for key in COLOR_KEYS:
                         val = request.form.get(key, '')
                         if val:
                             set_setting(f'custom_{key}', val)
-                elif theme_name in THEMES:
+                elif theme_name in THEMES and not theme_changed:
                     defaults = THEMES[theme_name]
                     for key in ALL_THEME_KEYS:
                         val = request.form.get(key, '').strip()

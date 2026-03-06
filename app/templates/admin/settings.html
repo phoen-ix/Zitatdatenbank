@@ -184,13 +184,11 @@ function selectTheme(name) {
         if (hex) hex.value = val;
     }
 
-    // Update effects
+    // Update effects (always reset to avoid stale values from previous theme)
     var hasEffects = name !== 'custom' && themeDefaults[name] && themeDefaults[name].body_class;
     document.getElementById('effectsSection').style.display = hasEffects ? '' : 'none';
-    if (hasEffects) {
-        document.getElementById('typing_speed').value = vals.typing_speed || '0';
-        document.getElementById('particle_count').value = vals.particle_count || '0';
-    }
+    document.getElementById('typing_speed').value = vals.typing_speed || '0';
+    document.getElementById('particle_count').value = vals.particle_count || '0';
 
     // Update reset button visibility
     document.getElementById('resetBtn').style.display = name === 'custom' ? 'none' : '';

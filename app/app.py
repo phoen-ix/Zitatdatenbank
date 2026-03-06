@@ -153,6 +153,15 @@ def import_quotes_cmd(path):
     click.echo(f'Imported {count} quotes.')
 
 
+@app.cli.command('cleanup-quotes')
+def cleanup_quotes_cmd():
+    """Clean up quote data: fix wiki markup, truncated authors, duplicates."""
+    from cleanup_service import run_full_cleanup
+    stats = run_full_cleanup()
+    for key, val in stats.items():
+        click.echo(f'{key}: {val}')
+
+
 @app.cli.command('create-admin')
 @click.option('--username', prompt=True)
 @click.option('--password', prompt=True, hide_input=True)
@@ -205,6 +214,21 @@ def _auto_import():
             return
 
 
+def _auto_cleanup():
+    """Run quote cleanup once after import. Uses a Setting flag to avoid re-running."""
+    from helpers import get_setting, set_setting
+    if get_setting('cleanup_done'):
+        return
+    count = db.session.query(models.Quote).count()
+    if count == 0:
+        return
+    logger.info('Running automatic quote cleanup...')
+    from cleanup_service import run_full_cleanup
+    stats = run_full_cleanup()
+    set_setting('cleanup_done', '1')
+    logger.info('Auto-cleanup complete: %s', stats)
+
+
 # Startup logic
 if os.environ.get('FLASK_TESTING') != '1':
     from sqlalchemy.exc import OperationalError
@@ -217,6 +241,7 @@ if os.environ.get('FLASK_TESTING') != '1':
                 db.create_all()
                 _ensure_admin()
                 _auto_import()
+                _auto_cleanup()
             break
         except OperationalError:
             if attempt == max_retries:

@@ -40,10 +40,12 @@ docker compose build && docker compose up -d
 - `app/routes/` - main.py (public), admin.py (admin CRUD + per-theme settings), auth.py (login/logout)
 - `app/templates/` - Jinja2 templates
 - `app/static/css/animations.css` - Animated theme styles, typing cursor, particle containers
-- `tests/` - pytest test suite (58 tests)
+- `app/cleanup_service.py` - Quote data cleanup (wiki markup, truncated authors, dedup)
+- `tests/` - pytest test suite (89 tests)
 
 ## CLI Commands
 - `flask import-quotes <path>` - Import quotes from SQL dump
+- `flask cleanup-quotes` - Fix wiki markup, truncated authors/categories, remove duplicates
 - `flask create-admin --username X --password Y` - Create admin user
 
 ## Key Patterns
@@ -56,4 +58,6 @@ docker compose build && docker compose up -d
 - Typing animation on animated themes processes all `.quote-text` elements, handles `<br>` nodes
 - Auth: Flask-Login with AdminUser model, env var auto-creation
 - Auto-import: Quotes imported on first startup if table is empty
+- Auto-cleanup: Runs once after import (gated by `cleanup_done` Setting flag), fixes wiki markup, truncated Sprichwort/Werbespruch authors, deduplicates quotes
+- Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
 - Tests: SQLite in-memory, CSRF disabled, session-scoped app fixture
