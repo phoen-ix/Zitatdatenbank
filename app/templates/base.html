@@ -20,6 +20,11 @@
             --theme-accent: {{ theme.color_accent }};
             --theme-card-bg: {{ theme.color_card_bg }};
             --theme-footer-bg: {{ theme.color_footer_bg }};
+            --theme-link: {{ theme.get('color_link', theme.color_accent) }};
+            --theme-muted: {{ theme.get('color_muted', '#888') }};
+            --theme-border: {{ theme.get('color_border', '#ddd') }};
+            --theme-card-header-bg: {{ theme.get('color_card_header_bg', '#f8f9fa') }};
+            --theme-input-bg: {{ theme.get('color_input_bg', '#fff') }};
         }
         body {
             background-color: var(--theme-bg);
@@ -30,6 +35,7 @@
         }
         .container.main-content { flex: 1; }
         .navbar { background-color: var(--theme-navbar) !important; }
+        a { color: var(--theme-link); }
         .btn-primary, .btn-primary:hover, .btn-primary:focus {
             background-color: var(--theme-accent);
             border-color: var(--theme-accent);
@@ -46,28 +52,36 @@
         .bg-primary { background-color: var(--theme-navbar) !important; }
         .text-primary { color: var(--theme-accent) !important; }
         .text-accent { color: var(--theme-accent); }
+        .text-muted { color: var(--theme-muted) !important; }
         .card {
             background-color: var(--theme-card-bg);
-            {% if is_dark %}
-            border-color: #444;
-            {% endif %}
+            border-color: var(--theme-border);
         }
-        {% if is_dark %}
-        .card-header { background-color: #3a3a4a; color: #ccc; }
+        .card-header {
+            background-color: var(--theme-card-header-bg);
+            {% if is_dark %}color: var(--theme-text);{% else %}font-weight: bold;{% endif %}
+        }
+        .card-footer {
+            background-color: var(--theme-card-header-bg);
+            color: var(--theme-muted);
+            border-color: var(--theme-border);
+        }
         .table { color: var(--theme-text); }
+        .table th, .table td { border-color: var(--theme-border); }
         .form-control, .form-select {
-            background-color: #313244;
+            background-color: var(--theme-input-bg);
             color: var(--theme-text);
-            border-color: #555;
+            border-color: var(--theme-border);
         }
         .form-control:focus, .form-select:focus {
-            background-color: #3a3a4a;
+            background-color: var(--theme-input-bg);
             color: var(--theme-text);
+            border-color: var(--theme-accent);
         }
         .page-link {
-            background-color: #313244;
+            background-color: var(--theme-input-bg);
             color: var(--theme-text);
-            border-color: #555;
+            border-color: var(--theme-border);
         }
         .page-item.active .page-link {
             background-color: var(--theme-accent);
@@ -76,17 +90,18 @@
         .list-group-item {
             background-color: var(--theme-card-bg);
             color: var(--theme-text);
-            border-color: #444;
+            border-color: var(--theme-border);
         }
-        {% else %}
-        .card-header { background-color: #f8f9fa; font-weight: bold; }
-        {% endif %}
+        .input-group-text {
+            background-color: var(--theme-card-header-bg);
+            color: var(--theme-muted);
+            border-color: var(--theme-border);
+        }
         footer {
             background-color: var(--theme-footer-bg);
-            {% if is_dark %}
-            color: #999;
-            {% endif %}
+            color: var(--theme-muted);
         }
+        .blockquote-footer { color: var(--theme-muted); }
         .quote-text {
             font-size: 1.1em;
             line-height: 1.7;
@@ -210,9 +225,11 @@
     {% if theme.get('body_class') == 'theme-unterwasser' %}
     <script nonce="{{ csp_nonce }}">
     (function(){
+        var count = {{ theme.get('particle_count', '15') | int }};
+        if (!count) return;
         var c=document.createElement('div');c.className='bubble-container';
         document.body.appendChild(c);
-        for(var i=0;i<15;i++){
+        for(var i=0;i<count;i++){
             var b=document.createElement('div');b.className='bubble';
             var size=8+Math.random()*20;
             b.style.width=size+'px';b.style.height=size+'px';
@@ -226,9 +243,11 @@
     {% elif theme.get('body_class') == 'theme-kosmos' %}
     <script nonce="{{ csp_nonce }}">
     (function(){
+        var count = {{ theme.get('particle_count', '80') | int }};
+        if (!count) return;
         var c=document.createElement('div');c.className='stars-container';
         document.body.appendChild(c);
-        for(var i=0;i<80;i++){
+        for(var i=0;i<count;i++){
             var s=document.createElement('div');s.className='star';
             var size=1+Math.random()*2.5;
             s.style.width=size+'px';s.style.height=size+'px';
@@ -243,10 +262,12 @@
     {% elif theme.get('body_class') == 'theme-feuer' %}
     <script nonce="{{ csp_nonce }}">
     (function(){
+        var count = {{ theme.get('particle_count', '20') | int }};
+        if (!count) return;
         var c=document.createElement('div');c.className='ember-container';
         document.body.appendChild(c);
         var colors=['#ff6b35','#ff8c00','#ff4500','#ffa500','#ff6347'];
-        for(var i=0;i<20;i++){
+        for(var i=0;i<count;i++){
             var e=document.createElement('div');e.className='ember';
             var size=2+Math.random()*4;
             e.style.width=size+'px';e.style.height=size+'px';
@@ -263,26 +284,25 @@
     {% if theme.get('body_class') %}
     <script nonce="{{ csp_nonce }}">
     (function(){
-        var speeds = {
-            'theme-hacker': {delay:18, pause:0, cursor:'\u2588'},
-            'theme-typewriter': {delay:45, pause:80, cursor:'|'},
-            'theme-neon': {delay:22, pause:0, cursor:'\u2588'},
-            'theme-pergament': {delay:25, pause:0, cursor:'\u270E'},
-            'theme-vaporwave': {delay:20, pause:0, cursor:'_'},
-            'theme-aurora': {delay:25, pause:0, cursor:'\u2588'},
-            'theme-unterwasser': {delay:30, pause:0, cursor:'~'},
-            'theme-kosmos': {delay:22, pause:0, cursor:'\u2022'},
-            'theme-feuer': {delay:20, pause:0, cursor:'\u2588'}
+        var typingSpeed = {{ theme.get('typing_speed', '0') | int }};
+        if (!typingSpeed) return;
+        var cursors = {
+            'theme-hacker': '\u2588', 'theme-typewriter': '|', 'theme-neon': '\u2588',
+            'theme-pergament': '\u270E', 'theme-vaporwave': '_', 'theme-aurora': '\u2588',
+            'theme-unterwasser': '~', 'theme-kosmos': '\u2022', 'theme-feuer': '\u2588'
         };
         var body = document.body.className.trim();
-        var cfg = null;
-        for (var k in speeds) {
-            if (body.indexOf(k) !== -1) { cfg = speeds[k]; break; }
+        var cursorChar = '_';
+        var hasPause = false;
+        for (var k in cursors) {
+            if (body.indexOf(k) !== -1) {
+                cursorChar = cursors[k];
+                hasPause = (k === 'theme-typewriter');
+                break;
+            }
         }
-        if (!cfg) return;
         var els = document.querySelectorAll('.quote-text');
         if (!els.length) return;
-        /* Only animate the first quote-text on the page (hero/detail) */
         var el = els[0];
         var fullText = el.textContent;
         if (!fullText || fullText.length > 600) return;
@@ -290,7 +310,7 @@
         el.classList.add('typing-active');
         var cursor = document.createElement('span');
         cursor.className = 'typing-cursor';
-        cursor.textContent = cfg.cursor;
+        cursor.textContent = cursorChar;
         el.appendChild(cursor);
         var i = 0;
         function typeChar() {
@@ -298,15 +318,14 @@
                 el.insertBefore(document.createTextNode(fullText[i]), cursor);
                 i++;
                 var extra = 0;
-                if (cfg.pause && (fullText[i-1] === ' ' || fullText[i-1] === ',' || fullText[i-1] === '.')) {
-                    extra = cfg.pause;
+                if (hasPause && (fullText[i-1] === ' ' || fullText[i-1] === ',' || fullText[i-1] === '.')) {
+                    extra = typingSpeed * 2;
                 }
-                setTimeout(typeChar, cfg.delay + extra + Math.random() * cfg.delay * 0.5);
+                setTimeout(typeChar, typingSpeed + extra + Math.random() * typingSpeed * 0.5);
             } else {
                 setTimeout(function(){ cursor.style.display = 'none'; }, 2000);
             }
         }
-        /* Start after a small delay */
         setTimeout(typeChar, 300);
     })();
     </script>

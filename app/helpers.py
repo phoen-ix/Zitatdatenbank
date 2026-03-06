@@ -7,7 +7,7 @@ from flask import g, session
 
 from extensions import db
 from models import Setting
-from config import THEMES, DEFAULT_THEME
+from config import THEMES, DEFAULT_THEME, COLOR_KEYS, EFFECT_KEYS, ALL_THEME_KEYS
 
 
 def get_setting(key: str, default: str | None = None) -> str | None:
@@ -35,15 +35,47 @@ def _(key: str) -> str:
 
 def get_active_theme() -> dict[str, str]:
     theme_name = get_setting('theme_name', DEFAULT_THEME)
-    theme = THEMES.get(theme_name, THEMES[DEFAULT_THEME])
-    # Check for custom color overrides
-    result = dict(theme)
-    for color_key in ('color_navbar', 'color_bg', 'color_text', 'color_accent',
-                      'color_card_bg', 'color_footer_bg'):
-        custom = get_setting(f'custom_{color_key}')
-        if custom and get_setting('theme_name') == 'custom':
-            result[color_key] = custom
-    return result
+    if theme_name == 'custom':
+        base = dict(THEMES[DEFAULT_THEME])
+        base['body_class'] = ''
+        base['preview_css'] = ''
+        # Load custom colors (legacy format)
+        for key in COLOR_KEYS:
+            val = get_setting(f'custom_{key}')
+            if val:
+                base[key] = val
+        return base
+
+    base = dict(THEMES.get(theme_name, THEMES[DEFAULT_THEME]))
+    # Load per-theme overrides
+    for key in ALL_THEME_KEYS:
+        val = get_setting(f'theme_{theme_name}_{key}')
+        if val:
+            base[key] = val
+    return base
+
+
+def get_theme_overrides() -> dict[str, dict[str, str]]:
+    """Load all per-theme overrides from the DB at once."""
+    rows = Setting.query.filter(Setting.key.like('theme_%_%')).all()
+    overrides: dict[str, dict[str, str]] = {}
+    for row in rows:
+        # key format: theme_{theme_name}_{field}
+        parts = row.key.split('_', 2)  # ['theme', name, field]
+        if len(parts) < 3:
+            continue
+        prefix = parts[0]
+        if prefix != 'theme':
+            continue
+        # theme name might contain underscores, so we need to match against known themes
+        rest = row.key[6:]  # remove 'theme_'
+        for tname in THEMES:
+            if rest.startswith(tname + '_'):
+                field = rest[len(tname) + 1:]
+                if field in ALL_THEME_KEYS:
+                    overrides.setdefault(tname, {})[field] = row.value
+                break
+    return overrides
 
 
 def hex_to_rgb(hex_color: str) -> str:

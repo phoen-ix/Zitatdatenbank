@@ -5,9 +5,9 @@ from flask_login import login_required
 from sqlalchemy import func
 
 from extensions import db
-from models import Quote, BackupLog
-from helpers import _, get_setting, set_setting
-from config import ADMIN_QUOTES_PER_PAGE, THEMES, DEFAULT_THEME, BACKUP_DIR
+from models import Quote, BackupLog, Setting
+from helpers import _, get_setting, set_setting, get_theme_overrides
+from config import ADMIN_QUOTES_PER_PAGE, THEMES, DEFAULT_THEME, BACKUP_DIR, COLOR_KEYS, EFFECT_KEYS, ALL_THEME_KEYS
 from backup_service import run_backup, restore_backup, list_backups, delete_backup_file
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -133,25 +133,52 @@ def settings():
             if theme_name in THEMES or theme_name == 'custom':
                 set_setting('theme_name', theme_name)
                 if theme_name == 'custom':
-                    for key in ('color_navbar', 'color_bg', 'color_text', 'color_accent',
-                                'color_card_bg', 'color_footer_bg'):
+                    for key in COLOR_KEYS:
                         val = request.form.get(key, '')
                         if val:
                             set_setting(f'custom_{key}', val)
+                elif theme_name in THEMES:
+                    defaults = THEMES[theme_name]
+                    for key in ALL_THEME_KEYS:
+                        val = request.form.get(key, '').strip()
+                        if val and val != defaults.get(key, ''):
+                            set_setting(f'theme_{theme_name}_{key}', val)
+                        elif val == defaults.get(key, ''):
+                            # Value matches default — remove override if it exists
+                            s = db.session.get(Setting, f'theme_{theme_name}_{key}')
+                            if s:
+                                db.session.delete(s)
+                                db.session.commit()
             flash(_('settings_saved'), 'success')
+
+        elif tab == 'reset_theme':
+            theme_name = request.form.get('theme_name', '')
+            if theme_name in THEMES:
+                rows = Setting.query.filter(
+                    Setting.key.like(f'theme_{theme_name}_%')
+                ).all()
+                for row in rows:
+                    db.session.delete(row)
+                db.session.commit()
+                flash(_('settings_saved'), 'success')
 
         return redirect(url_for('admin.settings'))
 
     current_theme = get_setting('theme_name', DEFAULT_THEME)
+    overrides = get_theme_overrides()
+
+    # Build custom colors for legacy custom theme
     custom_colors = {}
-    for key in ('color_navbar', 'color_bg', 'color_text', 'color_accent',
-                'color_card_bg', 'color_footer_bg'):
+    for key in COLOR_KEYS:
         custom_colors[key] = get_setting(f'custom_{key}', THEMES[DEFAULT_THEME].get(key, ''))
 
     return render_template('admin/settings.html',
                            themes=THEMES,
                            current_theme=current_theme,
                            custom_colors=custom_colors,
+                           overrides=overrides,
+                           color_keys=COLOR_KEYS,
+                           effect_keys=EFFECT_KEYS,
                            quotes_per_page=get_setting('quotes_per_page', '20'),
                            site_name_val=get_setting('site_name', 'Zitatdatenbank'))
 

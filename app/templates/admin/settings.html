@@ -49,7 +49,7 @@
     <div class="tab-pane fade" id="themes">
         <div class="card">
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" id="themeForm">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="tab" value="themes">
 
@@ -57,7 +57,7 @@
                     <div class="row mb-4">
                         {% for key, t in themes.items() %}
                         <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-3">
-                            <div class="card {% if current_theme == key %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" onclick="document.getElementById('theme_{{ key }}').checked=true">
+                            <div class="card theme-card {% if current_theme == key %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" onclick="selectTheme('{{ key }}')">
                                 <div style="height:40px;{% if t.get('preview_css') %}{{ t.preview_css }}{% else %}background-color:{{ t.color_navbar }}{% endif %};border-radius:4px 4px 0 0;"></div>
                                 <div class="card-body p-2 text-center" style="background-color:{{ t.color_bg }};color:{{ t.color_text }}">
                                     <input type="radio" name="theme_name" value="{{ key }}" id="theme_{{ key }}"
@@ -67,36 +67,72 @@
                             </div>
                         </div>
                         {% endfor %}
-                        <div class="col-md-4 col-lg-2 mb-3">
-                            <div class="card {% if current_theme == 'custom' %}border-primary{% endif %}" style="cursor:pointer" onclick="document.getElementById('theme_custom').checked=true">
+                        <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-3">
+                            <div class="card theme-card {% if current_theme == 'custom' %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" onclick="selectTheme('custom')">
                                 <div style="height:40px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:4px 4px 0 0;"></div>
                                 <div class="card-body p-2 text-center">
                                     <input type="radio" name="theme_name" value="custom" id="theme_custom"
                                            {% if current_theme == 'custom' %}checked{% endif %} class="form-check-input">
-                                    <label for="theme_custom" class="form-check-label ms-1">{{ _('custom_colors') }}</label>
+                                    <label for="theme_custom" class="form-check-label ms-1" style="font-size:0.85em">{{ _('custom_colors') }}</label>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="customColors" {% if current_theme != 'custom' %}style="display:none"{% endif %}>
-                        <h5 class="mb-3">{{ _('custom_colors') }}</h5>
+                    <!-- Color customization -->
+                    <div id="colorSection">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="bi bi-palette"></i> {{ _('theme_colors') }}</h5>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="resetBtn" onclick="resetToDefaults()">
+                                <i class="bi bi-arrow-counterclockwise"></i> {{ _('reset_defaults') }}
+                            </button>
+                        </div>
                         <div class="row">
-                            {% for key in ['color_navbar', 'color_bg', 'color_text', 'color_accent', 'color_card_bg', 'color_footer_bg'] %}
-                            <div class="col-md-4 mb-3">
-                                <label for="{{ key }}" class="form-label">{{ key.replace('color_', '').replace('_', ' ').title() }}</label>
-                                <div class="input-group">
-                                    <input type="color" class="form-control form-control-color" id="{{ key }}" name="{{ key }}" value="{{ custom_colors[key] }}">
-                                    <input type="text" class="form-control" value="{{ custom_colors[key] }}" onchange="document.getElementById('{{ key }}').value=this.value">
+                            {% for key in color_keys %}
+                            <div class="col-md-4 col-lg-3 mb-3">
+                                <label for="{{ key }}" class="form-label small">{{ key.replace('color_', '').replace('_', ' ').title() }}</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="color" class="form-control form-control-color form-control-sm" id="{{ key }}" name="{{ key }}" value="#000000">
+                                    <input type="text" class="form-control form-control-sm color-hex" data-for="{{ key }}" value="#000000"
+                                           oninput="document.getElementById('{{ key }}').value=this.value" maxlength="7" style="max-width:90px">
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
+                    <!-- Effects (animated themes only) -->
+                    <div id="effectsSection" style="display:none">
+                        <h5 class="mb-3 mt-2"><i class="bi bi-magic"></i> {{ _('theme_effects') }}</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="typing_speed" class="form-label small">{{ _('typing_speed') }}</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control form-control-sm" id="typing_speed" name="typing_speed"
+                                           min="0" max="200" value="0">
+                                    <span class="input-group-text">ms</span>
+                                </div>
+                                <small class="text-muted">{{ _('typing_speed_help') }}</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="particle_count" class="form-label small">{{ _('particle_count') }}</label>
+                                <input type="number" class="form-control form-control-sm" id="particle_count" name="particle_count"
+                                       min="0" max="200" value="0">
+                                <small class="text-muted">{{ _('particle_count_help') }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-2">
                         <i class="bi bi-check-lg"></i> {{ _('save') }}
                     </button>
+                </form>
+
+                <!-- Hidden reset form -->
+                <form method="POST" id="resetForm" style="display:none">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="tab" value="reset_theme">
+                    <input type="hidden" name="theme_name" id="resetThemeName" value="">
                 </form>
             </div>
         </div>
@@ -106,10 +142,103 @@
 
 {% block scripts %}
 <script nonce="{{ csp_nonce }}">
-document.querySelectorAll('input[name="theme_name"]').forEach(function(radio) {
-    radio.addEventListener('change', function() {
-        document.getElementById('customColors').style.display = this.value === 'custom' ? '' : 'none';
+var themeDefaults = {{ themes | tojson }};
+var themeOverrides = {{ overrides | tojson }};
+var customColors = {{ custom_colors | tojson }};
+var colorKeys = {{ color_keys | tojson }};
+var effectKeys = {{ effect_keys | tojson }};
+var currentTheme = {{ current_theme | tojson }};
+
+function getThemeValues(name) {
+    if (name === 'custom') {
+        var vals = {};
+        for (var i = 0; i < colorKeys.length; i++) {
+            vals[colorKeys[i]] = customColors[colorKeys[i]] || '#000000';
+        }
+        vals.typing_speed = '0';
+        vals.particle_count = '0';
+        return vals;
+    }
+    var base = themeDefaults[name] || {};
+    var over = themeOverrides[name] || {};
+    var merged = {};
+    var allKeys = colorKeys.concat(effectKeys);
+    for (var i = 0; i < allKeys.length; i++) {
+        var k = allKeys[i];
+        merged[k] = over[k] || base[k] || '';
+    }
+    return merged;
+}
+
+function selectTheme(name) {
+    document.getElementById('theme_' + name).checked = true;
+    var vals = getThemeValues(name);
+
+    // Update color pickers
+    for (var i = 0; i < colorKeys.length; i++) {
+        var k = colorKeys[i];
+        var val = vals[k] || '#000000';
+        var picker = document.getElementById(k);
+        var hex = document.querySelector('.color-hex[data-for="' + k + '"]');
+        if (picker) picker.value = val;
+        if (hex) hex.value = val;
+    }
+
+    // Update effects
+    var hasEffects = name !== 'custom' && themeDefaults[name] && themeDefaults[name].body_class;
+    document.getElementById('effectsSection').style.display = hasEffects ? '' : 'none';
+    if (hasEffects) {
+        document.getElementById('typing_speed').value = vals.typing_speed || '0';
+        document.getElementById('particle_count').value = vals.particle_count || '0';
+    }
+
+    // Update reset button visibility
+    document.getElementById('resetBtn').style.display = name === 'custom' ? 'none' : '';
+
+    // Sync color picker → hex on change
+    syncColorPickers();
+}
+
+function syncColorPickers() {
+    document.querySelectorAll('input[type="color"]').forEach(function(picker) {
+        picker.removeEventListener('input', colorPickerHandler);
+        picker.addEventListener('input', colorPickerHandler);
     });
-});
+}
+
+function colorPickerHandler(e) {
+    var id = e.target.id;
+    var hex = document.querySelector('.color-hex[data-for="' + id + '"]');
+    if (hex) hex.value = e.target.value;
+}
+
+function resetToDefaults() {
+    var name = document.querySelector('input[name="theme_name"]:checked');
+    if (!name || name.value === 'custom') return;
+    var base = themeDefaults[name.value];
+    if (!base) return;
+
+    // Update UI to defaults
+    for (var i = 0; i < colorKeys.length; i++) {
+        var k = colorKeys[i];
+        var val = base[k] || '#000000';
+        var picker = document.getElementById(k);
+        var hex = document.querySelector('.color-hex[data-for="' + k + '"]');
+        if (picker) picker.value = val;
+        if (hex) hex.value = val;
+    }
+    for (var i = 0; i < effectKeys.length; i++) {
+        var el = document.getElementById(effectKeys[i]);
+        if (el) el.value = base[effectKeys[i]] || '0';
+    }
+
+    // Also clear overrides in DB
+    document.getElementById('resetThemeName').value = name.value;
+    document.getElementById('resetForm').submit();
+}
+
+// Init on page load
+selectTheme(currentTheme);
+syncColorPickers();
 </script>
 {% endblock %}
