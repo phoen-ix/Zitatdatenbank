@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ _('admin_settings') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">{{ _('admin_settings') }}</h2>
+
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#general" type="button">
+            {{ _('settings_general') }}
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#themes" type="button">
+            {{ _('settings_themes') }}
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- General Tab -->
+    <div class="tab-pane fade show active" id="general">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="tab" value="general">
+
+                    <div class="mb-3">
+                        <label for="site_name" class="form-label">{{ _('site_name') }}</label>
+                        <input type="text" class="form-control" id="site_name" name="site_name" value="{{ site_name_val }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quotes_per_page" class="form-label">{{ _('quotes_per_page') }}</label>
+                        <input type="number" class="form-control" id="quotes_per_page" name="quotes_per_page"
+                               value="{{ quotes_per_page }}" min="5" max="100">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> {{ _('save') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Themes Tab -->
+    <div class="tab-pane fade" id="themes">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="tab" value="themes">
+
+                    <h5 class="mb-3">{{ _('theme_select') }}</h5>
+                    <div class="row mb-4">
+                        {% for key, t in themes.items() %}
+                        <div class="col-md-4 col-lg-2 mb-3">
+                            <div class="card {% if current_theme == key %}border-primary{% endif %}" style="cursor:pointer" onclick="document.getElementById('theme_{{ key }}').checked=true">
+                                <div style="height:40px;background-color:{{ t.color_navbar }};border-radius:4px 4px 0 0;"></div>
+                                <div class="card-body p-2 text-center" style="background-color:{{ t.color_bg }};color:{{ t.color_text }}">
+                                    <input type="radio" name="theme_name" value="{{ key }}" id="theme_{{ key }}"
+                                           {% if current_theme == key %}checked{% endif %} class="form-check-input">
+                                    <label for="theme_{{ key }}" class="form-check-label ms-1">{{ t.label }}</label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <div class="col-md-4 col-lg-2 mb-3">
+                            <div class="card {% if current_theme == 'custom' %}border-primary{% endif %}" style="cursor:pointer" onclick="document.getElementById('theme_custom').checked=true">
+                                <div style="height:40px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:4px 4px 0 0;"></div>
+                                <div class="card-body p-2 text-center">
+                                    <input type="radio" name="theme_name" value="custom" id="theme_custom"
+                                           {% if current_theme == 'custom' %}checked{% endif %} class="form-check-input">
+                                    <label for="theme_custom" class="form-check-label ms-1">{{ _('custom_colors') }}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="customColors" {% if current_theme != 'custom' %}style="display:none"{% endif %}>
+                        <h5 class="mb-3">{{ _('custom_colors') }}</h5>
+                        <div class="row">
+                            {% for key in ['color_navbar', 'color_bg', 'color_text', 'color_accent', 'color_card_bg', 'color_footer_bg'] %}
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ key }}" class="form-label">{{ key.replace('color_', '').replace('_', ' ').title() }}</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="{{ key }}" name="{{ key }}" value="{{ custom_colors[key] }}">
+                                    <input type="text" class="form-control" value="{{ custom_colors[key] }}" onchange="document.getElementById('{{ key }}').value=this.value">
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> {{ _('save') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+document.querySelectorAll('input[name="theme_name"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        document.getElementById('customColors').style.display = this.value === 'custom' ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

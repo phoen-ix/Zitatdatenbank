@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ _('admin_dashboard') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">{{ _('admin_dashboard') }}</h2>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-accent">{{ "{:,}".format(total_quotes) }}</h3>
+                <p class="text-muted mb-0">{{ _('total_quotes') }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-accent">{{ "{:,}".format(total_authors) }}</h3>
+                <p class="text-muted mb-0">{{ _('total_authors') }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-accent">{{ "{:,}".format(total_categories) }}</h3>
+                <p class="text-muted mb-0">{{ _('total_categories') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-lightning"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin.add_quote') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> {{ _('add_quote') }}
+                    </a>
+                    <a href="{{ url_for('admin.quotes') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-list"></i> {{ _('admin_quotes') }}
+                    </a>
+                    <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-gear"></i> {{ _('admin_settings') }}
+                    </a>
+                    <a href="{{ url_for('admin.backup') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-download"></i> {{ _('admin_backup') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i> Recent Quotes
+            </div>
+            <div class="list-group list-group-flush">
+                {% for q in recent_quotes %}
+                <a href="{{ url_for('admin.edit_quote', quote_id=q.id) }}" class="list-group-item list-group-item-action">
+                    <small class="text-muted">#{{ q.id }}</small>
+                    {{ q.text[:80] }}{% if q.text|length > 80 %}...{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

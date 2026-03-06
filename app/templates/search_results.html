@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ _('search_results') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    {% if query %}
+    {{ _('search_results_for') }} "{{ query }}"
+    {% else %}
+    {{ _('nav_search') }}
+    {% endif %}
+</h2>
+
+<form method="GET" action="{{ url_for('main.search') }}" class="mb-4">
+    <div class="input-group">
+        <input type="search" name="q" class="form-control" placeholder="{{ _('search_placeholder') }}" value="{{ query }}">
+        <button class="btn btn-primary" type="submit">
+            <i class="bi bi-search"></i> {{ _('search_button') }}
+        </button>
+    </div>
+</form>
+
+{% if quotes %}
+<p class="text-muted mb-3">{{ pagination.total }} {{ _('quotes_count') }}</p>
+{% for quote in quotes %}
+<div class="card mb-3">
+    <div class="card-body">
+        <p class="quote-text mb-2">{{ quote.text[:300] }}{% if quote.text|length > 300 %}...{% endif %}</p>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                {% if quote.author %}
+                <a href="{{ url_for('main.browse', author=quote.author) }}" class="quote-author text-decoration-none">
+                    <i class="bi bi-person"></i> {{ quote.author }}
+                </a>
+                {% endif %}
+                {% if quote.category and quote.category != quote.author %}
+                <a href="{{ url_for('main.browse', category=quote.category) }}" class="badge bg-secondary text-decoration-none ms-2">
+                    {{ quote.category }}
+                </a>
+                {% endif %}
+            </div>
+            <a href="{{ url_for('main.quote_detail', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% with kwargs={'q': query} %}
+{% include '_pagination.html' %}
+{% endwith %}
+
+{% elif query %}
+<div class="alert alert-info">{{ _('no_results') }}</div>
+{% endif %}
+{% endblock %}

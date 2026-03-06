@@ -1,0 +1,222 @@
+from __future__ import annotations
+
+import logging
+import os
+import secrets
+import time
+from datetime import datetime
+
+import click
+from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify
+from werkzeug.security import generate_password_hash
+
+from extensions import db, csrf, migrate, limiter, login_manager
+from helpers import _, get_setting, get_active_theme, hex_to_rgb, is_dark_theme
+from config import DEFAULT_THEME
+
+
+def setup_logging() -> None:
+    log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s [%(name)s] %(message)s'
+    ))
+    root = logging.getLogger()
+    root.setLevel(getattr(logging, log_level, logging.INFO))
+    root.addHandler(handler)
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
+
+app = Flask(__name__)
+
+_secret = os.environ.get('SECRET_KEY', '')
+if not _secret or _secret == 'change-this-to-a-random-secret-key':
+    if os.environ.get('FLASK_TESTING') == '1':
+        _secret = 'test-key-not-for-production'
+    else:
+        raise RuntimeError(
+            'SECRET_KEY is not set or is the insecure default. '
+            'Set a strong random value in your .env file.'
+        )
+app.config['SECRET_KEY'] = _secret
+
+_db_uri = os.environ.get('SQLALCHEMY_DATABASE_URI', '')
+if not _db_uri:
+    _db_user = os.environ.get('DB_USER', '')
+    _db_pass = os.environ.get('DB_PASSWORD', '')
+    if not _db_user or not _db_pass:
+        if os.environ.get('FLASK_TESTING') == '1':
+            _db_uri = 'sqlite://'
+        else:
+            raise RuntimeError(
+                'DB_USER and DB_PASSWORD must be set in your .env file '
+                '(or set SQLALCHEMY_DATABASE_URI directly).'
+            )
+    else:
+        _db_host = os.environ.get('DB_HOST', 'localhost')
+        _db_port = os.environ.get('DB_PORT', '3306')
+        _db_name = os.environ.get('DB_NAME', 'zitatdatenbank')
+        _db_uri = f'mysql+pymysql://{_db_user}:{_db_pass}@{_db_host}:{_db_port}/{_db_name}'
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+migrate.init_app(app, db)
+csrf.init_app(app)
+limiter.init_app(app)
+login_manager.init_app(app)
+login_manager.login_view = 'auth.login'
+
+import models  # noqa: F401
+
+from routes import register_blueprints
+register_blueprints(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(models.AdminUser, int(user_id))
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    flash(_('login_required'), 'error')
+    return redirect(url_for('auth.login', next=request.url))
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    if request.is_json:
+        return jsonify({'status': 'error', 'detail': str(e.description)}), 429
+    flash('Too many requests. Please wait and try again.', 'error')
+    return redirect(request.referrer or url_for('main.index'))
+
+
+@app.context_processor
+def inject_globals():
+    theme = get_active_theme()
+    nonce = secrets.token_urlsafe(16)
+    g.csp_nonce = nonce
+    return dict(
+        _=_,
+        theme=theme,
+        theme_navbar_rgb=hex_to_rgb(theme.get('color_navbar', '#6b4c3b')),
+        is_dark=is_dark_theme(theme),
+        csp_nonce=nonce,
+        site_name=get_setting('site_name', 'Zitatdatenbank'),
+        current_lang=session.get('lang', 'de'),
+    )
+
+
+@app.after_request
+def set_csp_header(response: Response) -> Response:
+    if 'text/html' in response.content_type:
+        nonce = g.get('csp_nonce', '')
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            f"script-src 'self' 'nonce-{nonce}'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "object-src 'none'"
+        )
+    return response
+
+
+# CLI commands
+@app.cli.command('import-quotes')
+@click.argument('path')
+def import_quotes_cmd(path):
+    """Import quotes from a SQL dump file."""
+    from import_service import import_quotes_from_sql
+    if not os.path.exists(path):
+        click.echo(f'File not found: {path}')
+        return
+    count = import_quotes_from_sql(path)
+    click.echo(f'Imported {count} quotes.')
+
+
+@app.cli.command('create-admin')
+@click.option('--username', prompt=True)
+@click.option('--password', prompt=True, hide_input=True)
+def create_admin_cmd(username, password):
+    """Create an admin user."""
+    existing = models.AdminUser.query.filter_by(username=username).first()
+    if existing:
+        existing.password_hash = generate_password_hash(password)
+        db.session.commit()
+        click.echo(f'Admin user "{username}" password updated.')
+    else:
+        admin = models.AdminUser(
+            username=username,
+            password_hash=generate_password_hash(password),
+        )
+        db.session.add(admin)
+        db.session.commit()
+        click.echo(f'Admin user "{username}" created.')
+
+
+def _ensure_admin():
+    """Create admin user from env vars if no admin exists."""
+    username = os.environ.get('ADMIN_USERNAME', 'admin')
+    password = os.environ.get('ADMIN_PASSWORD', '')
+    if not password:
+        return
+    existing = models.AdminUser.query.filter_by(username=username).first()
+    if not existing:
+        admin = models.AdminUser(
+            username=username,
+            password_hash=generate_password_hash(password),
+        )
+        db.session.add(admin)
+        db.session.commit()
+        logger.info('Admin user "%s" created from env vars', username)
+
+
+def _auto_import():
+    """Auto-import quotes on first startup if table is empty."""
+    count = db.session.query(models.Quote).count()
+    if count > 0:
+        return
+    # Check standard data paths
+    for path in ['/data/zitate.sql', '/app/data/zitate.sql', 'data/zitate.sql']:
+        if os.path.exists(path):
+            logger.info('Auto-importing quotes from %s', path)
+            from import_service import import_quotes_from_sql
+            imported = import_quotes_from_sql(path)
+            logger.info('Auto-imported %d quotes', imported)
+            return
+
+
+# Startup logic
+if os.environ.get('FLASK_TESTING') != '1':
+    from sqlalchemy.exc import OperationalError
+
+    max_retries = 5
+    for attempt in range(1, max_retries + 1):
+        try:
+            with app.app_context():
+                db.session.execute(db.text('SELECT 1'))
+                db.create_all()
+                _ensure_admin()
+                _auto_import()
+            break
+        except OperationalError:
+            if attempt == max_retries:
+                logger.error('Could not connect to database after %d attempts', max_retries)
+                raise
+            delay = 2 ** (attempt - 1)
+            logger.warning('DB not ready, retrying in %ds... (%d/%d)', delay, attempt, max_retries)
+            time.sleep(delay)
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

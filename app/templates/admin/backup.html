@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ _('admin_backup') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">{{ _('admin_backup') }}</h2>
+
+<div class="mb-4">
+    <form method="POST" action="{{ url_for('admin.backup_create') }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> {{ _('create_backup') }}
+        </button>
+    </form>
+</div>
+
+{% if backups %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Filename</th>
+                <th>Size</th>
+                <th>Date</th>
+                <th>{{ _('actions') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in backups %}
+            <tr>
+                <td><code>{{ b.filename }}</code></td>
+                <td>{{ "%.1f"|format(b.size / 1024 / 1024) }} MB</td>
+                <td>{{ b.modified.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <a href="{{ url_for('admin.backup_download', filename=b.filename) }}" class="btn btn-sm btn-outline-primary" title="{{ _('download_backup') }}">
+                        <i class="bi bi-download"></i>
+                    </a>
+                    <form method="POST" action="{{ url_for('admin.backup_restore', filename=b.filename) }}" class="d-inline" data-confirm="{{ _('confirm_restore') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-warning" title="{{ _('restore_backup') }}">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin.backup_delete', filename=b.filename) }}" class="d-inline" data-confirm="{{ _('confirm_delete') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('delete_backup') }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">{{ _('no_backups') }}</div>
+{% endif %}
+
+{% if logs %}
+<h4 class="mt-4">Log</h4>
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Level</th>
+                <th>Message</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td><small>{{ log.ran_at.strftime('%Y-%m-%d %H:%M:%S') if log.ran_at else '' }}</small></td>
+                <td><span class="badge bg-{% if log.level == 'ERROR' %}danger{% elif log.level == 'SUCCESS' %}success{% else %}info{% endif %}">{{ log.level }}</span></td>
+                <td><small>{{ log.message }}</small></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

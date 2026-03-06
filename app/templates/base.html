@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="{{ theme.color_navbar }}">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <link href="{{ url_for('static', filename='vendor/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/bootstrap-icons.css') }}">
+    <style>
+        :root {
+            --theme-navbar: {{ theme.color_navbar }};
+            --theme-navbar-rgb: {{ theme_navbar_rgb }};
+            --theme-bg: {{ theme.color_bg }};
+            --theme-text: {{ theme.color_text }};
+            --theme-accent: {{ theme.color_accent }};
+            --theme-card-bg: {{ theme.color_card_bg }};
+            --theme-footer-bg: {{ theme.color_footer_bg }};
+        }
+        body {
+            background-color: var(--theme-bg);
+            color: var(--theme-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container.main-content { flex: 1; }
+        .navbar { background-color: var(--theme-navbar) !important; }
+        .btn-primary, .btn-primary:hover, .btn-primary:focus {
+            background-color: var(--theme-accent);
+            border-color: var(--theme-accent);
+        }
+        .btn-outline-primary {
+            color: var(--theme-accent);
+            border-color: var(--theme-accent);
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--theme-accent);
+            border-color: var(--theme-accent);
+            color: #fff;
+        }
+        .bg-primary { background-color: var(--theme-navbar) !important; }
+        .text-primary { color: var(--theme-accent) !important; }
+        .text-accent { color: var(--theme-accent); }
+        .card {
+            background-color: var(--theme-card-bg);
+            {% if is_dark %}
+            border-color: #444;
+            {% endif %}
+        }
+        {% if is_dark %}
+        .card-header { background-color: #3a3a4a; color: #ccc; }
+        .table { color: var(--theme-text); }
+        .form-control, .form-select {
+            background-color: #313244;
+            color: var(--theme-text);
+            border-color: #555;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #3a3a4a;
+            color: var(--theme-text);
+        }
+        .page-link {
+            background-color: #313244;
+            color: var(--theme-text);
+            border-color: #555;
+        }
+        .page-item.active .page-link {
+            background-color: var(--theme-accent);
+            border-color: var(--theme-accent);
+        }
+        .list-group-item {
+            background-color: var(--theme-card-bg);
+            color: var(--theme-text);
+            border-color: #444;
+        }
+        {% else %}
+        .card-header { background-color: #f8f9fa; font-weight: bold; }
+        {% endif %}
+        footer {
+            background-color: var(--theme-footer-bg);
+            {% if is_dark %}
+            color: #999;
+            {% endif %}
+        }
+        .quote-text {
+            font-size: 1.1em;
+            line-height: 1.7;
+            font-style: italic;
+        }
+        .quote-author {
+            font-weight: 600;
+            color: var(--theme-accent);
+        }
+        .navbar-brand { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
+                <i class="bi bi-quote"></i> {{ site_name }}
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.index') }}">{{ _('nav_home') }}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.browse') }}">{{ _('nav_browse') }}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.authors') }}">{{ _('nav_authors') }}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.categories') }}">{{ _('nav_categories') }}</a>
+                    </li>
+                </ul>
+                <form class="d-flex me-3" action="{{ url_for('main.search') }}" method="GET">
+                    <div class="input-group input-group-sm">
+                        <input class="form-control" type="search" name="q"
+                               placeholder="{{ _('search_placeholder') }}"
+                               value="{{ request.args.get('q', '') if request.endpoint == 'main.search' else '' }}">
+                        <button class="btn btn-outline-light" type="submit">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </form>
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.dashboard') }}">{{ _('nav_admin') }}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.logout') }}">{{ _('nav_logout') }}</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">{{ _('nav_login') }}</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.set_lang', lang='en' if current_lang == 'de' else 'de') }}">
+                            {{ _('nav_language') }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer" style="z-index:1080;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="toast align-items-center text-bg-{{ 'success' if category == 'success' else 'danger' }} border-0" role="alert" data-bs-delay="4000">
+                        <div class="d-flex">
+                            <div class="toast-body">{{ message }}</div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="container main-content mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="mt-5 py-4">
+        <div class="container text-center text-muted">
+            <p>&copy; {{ _('footer_text') }}</p>
+        </div>
+    </footer>
+
+    <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='vendor/js/bootstrap.bundle.min.js') }}"></script>
+    <script nonce="{{ csp_nonce }}">
+    document.querySelectorAll('#toastContainer .toast').forEach(function(el) {
+        bootstrap.Toast.getOrCreateInstance(el).show();
+    });
+    (function() {
+        var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
+            if (!form.querySelector('input[name="csrf_token"]')) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'csrf_token';
+                input.value = token;
+                form.appendChild(input);
+            }
+        });
+    })();
+    document.addEventListener('click', function(e) {
+        var el = e.target.closest('[data-confirm]');
+        if (el && !confirm(el.dataset.confirm)) e.preventDefault();
+    });
+    document.addEventListener('submit', function(e) {
+        if (e.target.dataset.confirm && !confirm(e.target.dataset.confirm)) e.preventDefault();
+    }, true);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

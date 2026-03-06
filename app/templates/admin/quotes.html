@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ _('admin_quotes') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ _('admin_quotes') }}</h2>
+    <a href="{{ url_for('admin.add_quote') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> {{ _('add_quote') }}
+    </a>
+</div>
+
+<form method="GET" class="mb-4">
+    <div class="input-group">
+        <input type="search" name="q" class="form-control" placeholder="{{ _('search_placeholder') }}" value="{{ search_query }}">
+        <button class="btn btn-outline-primary" type="submit">
+            <i class="bi bi-search"></i>
+        </button>
+    </div>
+</form>
+
+<p class="text-muted">{{ pagination.total }} {{ _('quotes_count') }}</p>
+
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th style="width:60px">{{ _('id') }}</th>
+                <th>{{ _('quote_text') }}</th>
+                <th style="width:150px">{{ _('author') }}</th>
+                <th style="width:150px">{{ _('category') }}</th>
+                <th style="width:120px">{{ _('actions') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for quote in quotes %}
+            <tr>
+                <td>{{ quote.id }}</td>
+                <td>{{ quote.text[:100] }}{% if quote.text|length > 100 %}...{% endif %}</td>
+                <td>{{ quote.author or '' }}</td>
+                <td>{{ quote.category or '' }}</td>
+                <td>
+                    <a href="{{ url_for('admin.edit_quote', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary" title="{{ _('edit') }}">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <form method="POST" action="{{ url_for('admin.delete_quote', quote_id=quote.id) }}" class="d-inline" data-confirm="{{ _('confirm_delete') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('delete') }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% with kwargs={'q': search_query} %}
+{% include '_pagination.html' %}
+{% endwith %}
+{% endblock %}

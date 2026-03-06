@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ _('quote_detail') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+{% if quote %}
+<div class="mb-3">
+    <a href="{{ url_for('main.browse') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> {{ _('back_to_browse') }}
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <blockquote class="blockquote mb-0">
+            <p class="quote-text">{{ quote.text }}</p>
+            <footer class="blockquote-footer mt-3">
+                {% if quote.author %}
+                <a href="{{ url_for('main.browse', author=quote.author) }}" class="quote-author text-decoration-none">
+                    {{ quote.author }}
+                </a>
+                {% else %}
+                <span class="quote-author">{{ _('unknown_author') }}</span>
+                {% endif %}
+                {% if quote.category and quote.category != quote.author %}
+                &middot;
+                <a href="{{ url_for('main.browse', category=quote.category) }}" class="text-muted text-decoration-none">
+                    {{ quote.category }}
+                </a>
+                {% endif %}
+            </footer>
+        </blockquote>
+    </div>
+    <div class="card-footer text-muted small">
+        {{ _('id') }} {{ quote.id }}
+    </div>
+</div>
+
+{% if related_by_author %}
+<h4>{{ _('more_by_author') }} {{ quote.author }}</h4>
+<div class="list-group mb-4">
+    {% for rq in related_by_author %}
+    <a href="{{ url_for('main.quote_detail', quote_id=rq.id) }}" class="list-group-item list-group-item-action">
+        {{ rq.text[:150] }}{% if rq.text|length > 150 %}...{% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="alert alert-warning">{{ _('no_quotes_found') }}</div>
+{% endif %}
+{% endblock %}

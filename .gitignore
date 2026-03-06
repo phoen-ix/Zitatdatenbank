@@ -1,0 +1,36 @@
+# Environment variables
+.env
+
+# Database
+mariadb-data/
+
+# Backups
+backups/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Root SQL dump (canonical copy is in data/)
+/zitate.sql
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

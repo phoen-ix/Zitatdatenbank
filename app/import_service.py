@@ -1,0 +1,211 @@
+from __future__ import annotations
+
+import logging
+import re
+
+logger = logging.getLogger(__name__)
+
+# Category values that indicate a source type (proverbs, tongue twisters, ad slogans, etc.)
+SOURCE_KEYWORDS = (
+    'Sprichw', 'Zungenbrecher', 'Werbespr', 'Bauernregel',
+    'Kinderreim', 'Abzählreim', 'Volksmund', 'Redewendung',
+)
+
+
+def parse_sql_inserts(sql_text: str) -> list[tuple[int, str, str]]:
+    """Parse INSERT statements from the SQL dump, returning (id, zitat, autor_herkunft_thema) tuples."""
+    rows: list[tuple[int, str, str]] = []
+    # Match each row tuple: (id, 'zitat', 'autor_herkunft_thema')
+    # The SQL uses '' for escaped single quotes inside strings
+    i = 0
+    length = len(sql_text)
+
+    while i < length:
+        # Find start of a row tuple
+        idx = sql_text.find('(', i)
+        if idx == -1:
+            break
+
+        # Check if this looks like a data row (starts with a number)
+        after_paren = idx + 1
+        # Skip whitespace
+        while after_paren < length and sql_text[after_paren] in ' \t\n\r':
+            after_paren += 1
+
+        if after_paren >= length or not sql_text[after_paren].isdigit():
+            i = idx + 1
+            continue
+
+        # Parse the id
+        num_start = after_paren
+        while after_paren < length and sql_text[after_paren].isdigit():
+            after_paren += 1
+        row_id = int(sql_text[num_start:after_paren])
+
+        # Skip to first quote (the zitat field)
+        quote_start = sql_text.find("'", after_paren)
+        if quote_start == -1:
+            i = after_paren
+            continue
+
+        # Parse the zitat string (handling '' escapes)
+        zitat, end_pos = _parse_sql_string(sql_text, quote_start)
+        if zitat is None:
+            i = after_paren
+            continue
+
+        # Skip to next quote (the autor_herkunft_thema field)
+        quote_start2 = sql_text.find("'", end_pos)
+        if quote_start2 == -1:
+            i = end_pos
+            continue
+
+        category, end_pos2 = _parse_sql_string(sql_text, quote_start2)
+        if category is None:
+            i = end_pos
+            continue
+
+        rows.append((row_id, zitat, category))
+        i = end_pos2
+
+    return rows
+
+
+def _parse_sql_string(sql_text: str, start: int) -> tuple[str | None, int]:
+    """Parse a SQL single-quoted string starting at position start. Returns (string, end_position)."""
+    if sql_text[start] != "'":
+        return None, start
+
+    i = start + 1
+    length = len(sql_text)
+    chars: list[str] = []
+
+    while i < length:
+        ch = sql_text[i]
+        if ch == "'":
+            # Check for escaped quote ''
+            if i + 1 < length and sql_text[i + 1] == "'":
+                chars.append("'")
+                i += 2
+            else:
+                # End of string
+                return ''.join(chars), i + 1
+        elif ch == '\\':
+            # Handle backslash escapes
+            if i + 1 < length:
+                next_ch = sql_text[i + 1]
+                if next_ch == "'":
+                    chars.append("'")
+                elif next_ch == '\\':
+                    chars.append('\\')
+                elif next_ch == 'n':
+                    chars.append('\n')
+                elif next_ch == 'r':
+                    chars.append('\r')
+                elif next_ch == 't':
+                    chars.append('\t')
+                else:
+                    chars.append(next_ch)
+                i += 2
+            else:
+                chars.append(ch)
+                i += 1
+        else:
+            chars.append(ch)
+            i += 1
+
+    return None, i
+
+
+def classify_and_extract(zitat: str, category: str) -> tuple[str, str]:
+    """Classify the category field and extract the best author.
+
+    Returns (author, category).
+    """
+    category = category.strip()
+
+    if not category:
+        author = _extract_author_from_text(zitat)
+        return (author, '')
+
+    # Check if category is a source keyword (proverb, tongue twister, etc.)
+    for kw in SOURCE_KEYWORDS:
+        if kw.lower() in category.lower():
+            return (category, category)
+
+    # Check if category text appears in the quote text as attribution (after " - ")
+    author_from_text = _extract_author_from_text(zitat)
+
+    # If the category is a single word and doesn't look like an author name,
+    # it's likely a topic keyword
+    words = category.split()
+    if len(words) == 1:
+        # Single word - likely a topic. Try to get author from text.
+        if author_from_text:
+            return (author_from_text, category)
+        return ('', category)
+
+    # Multi-word: check if it appears in the attribution part
+    if author_from_text and _fuzzy_match(category, author_from_text):
+        return (category, category)
+
+    # Multi-word that's not in attribution: assume it's an author name
+    return (category, category)
+
+
+def _extract_author_from_text(text: str) -> str:
+    """Try to extract author from the quote text (typically after ' - ')."""
+    # Look for attribution pattern: " - Author Name"
+    # The dash pattern commonly used in these quotes
+    match = re.search(r'" - ([^"]+?)(?:\.|,|$)', text)
+    if match:
+        author_part = match.group(1).strip()
+        # Take just the author name (before any work title or source reference)
+        # Common patterns: "Author, Work Title" or "Author: Work"
+        for sep in [',', ':', ';', '.']:
+            if sep in author_part:
+                candidate = author_part.split(sep)[0].strip()
+                if len(candidate) > 2:
+                    return candidate
+        return author_part[:200] if len(author_part) > 200 else author_part
+    return ''
+
+
+def _fuzzy_match(a: str, b: str) -> bool:
+    """Check if string a is roughly contained in string b or vice versa."""
+    a_lower = a.lower().strip()
+    b_lower = b.lower().strip()
+    return a_lower in b_lower or b_lower in a_lower
+
+
+def import_quotes_from_sql(sql_path: str) -> int:
+    """Parse the SQL file and import quotes into the database. Returns count of imported quotes."""
+    from extensions import db
+    from models import Quote
+
+    with open(sql_path, 'r', encoding='utf-8') as f:
+        sql_text = f.read()
+
+    rows = parse_sql_inserts(sql_text)
+    logger.info('Parsed %d rows from SQL file', len(rows))
+
+    count = 0
+    batch_size = 500
+    for i, (row_id, zitat, cat) in enumerate(rows):
+        author, category = classify_and_extract(zitat, cat)
+        quote = Quote(
+            id=row_id,
+            text=zitat,
+            author=author,
+            category=category,
+        )
+        db.session.add(quote)
+        count += 1
+
+        if (i + 1) % batch_size == 0:
+            db.session.commit()
+            logger.info('Imported %d / %d quotes', i + 1, len(rows))
+
+    db.session.commit()
+    logger.info('Import complete: %d quotes', count)
+    return count
