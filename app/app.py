@@ -215,17 +215,19 @@ def _auto_import():
 
 
 def _auto_cleanup():
-    """Run quote cleanup once after import. Uses a Setting flag to avoid re-running."""
+    """Run quote cleanup if version is outdated. Uses a version Setting to avoid re-running."""
     from helpers import get_setting, set_setting
-    if get_setting('cleanup_done'):
+    from cleanup_service import CLEANUP_VERSION
+    current = int(get_setting('cleanup_version', '0'))
+    if current >= CLEANUP_VERSION:
         return
     count = db.session.query(models.Quote).count()
     if count == 0:
         return
-    logger.info('Running automatic quote cleanup...')
+    logger.info('Running automatic quote cleanup (v%d -> v%d)...', current, CLEANUP_VERSION)
     from cleanup_service import run_full_cleanup
     stats = run_full_cleanup()
-    set_setting('cleanup_done', '1')
+    set_setting('cleanup_version', str(CLEANUP_VERSION))
     logger.info('Auto-cleanup complete: %s', stats)
 
 

@@ -47,6 +47,56 @@ class TestCompleteSprichw:
         assert _complete_sprichw('Werbespruch') == 'Werbespruch'
 
 
+class TestStripWikiMarkup:
+    def test_strips_wiki_links(self, app):
+        from cleanup_service import _strip_wiki_markup
+        assert _strip_wiki_markup('[[Some Link]]') == 'Some Link'
+
+    def test_strips_piped_links(self, app):
+        from cleanup_service import _strip_wiki_markup
+        assert _strip_wiki_markup('[[Page|Display Text]]') == 'Display Text'
+
+    def test_strips_remnant_brackets(self, app):
+        from cleanup_service import _strip_wiki_markup
+        assert _strip_wiki_markup('Eva Herman in der Sendung [[') == 'Eva Herman in der Sendung'
+
+    def test_strips_bold_italic(self, app):
+        from cleanup_service import _strip_wiki_markup
+        assert _strip_wiki_markup("Aus China''") == 'Aus China'
+
+    def test_strips_backticks(self, app):
+        from cleanup_service import _strip_wiki_markup
+        assert _strip_wiki_markup('`Paramahansa-Upanishad´') == 'Paramahansa-Upanishad'
+
+
+class TestIsGarbageAuthor:
+    def test_single_char(self, app):
+        from cleanup_service import _is_garbage_author
+        assert _is_garbage_author('A') is True
+
+    def test_numeric(self, app):
+        from cleanup_service import _is_garbage_author
+        assert _is_garbage_author('15') is True
+        assert _is_garbage_author('1797') is True
+
+    def test_punctuation(self, app):
+        from cleanup_service import _is_garbage_author
+        assert _is_garbage_author(',') is True
+        assert _is_garbage_author(';') is True
+        assert _is_garbage_author("'") is True
+
+    def test_known_fragments(self, app):
+        from cleanup_service import _is_garbage_author
+        assert _is_garbage_author('Im') is True
+        assert _is_garbage_author('Pap') is True
+        assert _is_garbage_author('Das M') is True
+
+    def test_normal_name_not_garbage(self, app):
+        from cleanup_service import _is_garbage_author
+        assert _is_garbage_author('Homer') is False
+        assert _is_garbage_author('Albert Einstein') is False
+
+
 class TestCleanAuthor:
     def test_empty_author_extracts_from_text(self, app):
         from cleanup_service import _clean_author
@@ -95,6 +145,108 @@ class TestCleanAuthor:
         author, cat = _clean_author('Albert Einstein', 'text')
         assert author == 'Albert Einstein'
 
+    def test_numeric_cleared(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('15', 'text')
+        assert author == ''
+
+    def test_single_char_cleared(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('A', 'text')
+        assert author == ''
+
+    def test_aus_country_converted(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Aus Deutschland', 'text')
+        assert author == 'Sprichwort aus Deutschland'
+
+    def test_aus_country_truncated(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Aus Albanien (30', 'text')
+        assert author == 'Sprichwort aus Albanien'
+
+    def test_aus_typo(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Aus Deutschand', 'text')
+        assert author == 'Sprichwort aus Deutschland'
+
+    def test_name_truncated_paren(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Albert Einstein (25', 'text')
+        assert author == 'Albert Einstein'
+
+    def test_name_truncated_date(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Astrid Lindgren (18', 'text')
+        assert author == 'Astrid Lindgren'
+
+    def test_nach_name(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('nach Plato', 'text')
+        assert author == 'Plato'
+
+    def test_nach_phrase_cleared(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('nach der Schlacht im Teutoburger Wald', 'text')
+        assert author == ''
+
+    def test_zugeschrieben_extracts_name(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Karl Lueger zugeschrieben', 'text')
+        assert author == 'Karl Lueger'
+
+    def test_basierend_auf_cleared(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author("basierend auf ''''", 'text')
+        assert author == ''
+
+    def test_paren_start_name_extracted(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('(Johann König)', 'text')
+        assert author == 'Johann König'
+
+    def test_paren_start_garbage_cleared(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('(2', 'text')
+        assert author == ''
+
+    def test_zitat_von_extracts(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Zitat von Marcus Pinarius Rusca', 'text')
+        assert author == 'Marcus Pinarius Rusca'
+
+    def test_wiki_link_in_author(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('[[:w:Der verschwenderische Jüngling und die Schwalbe]]', 'text')
+        assert '[[' not in author
+        assert ']]' not in author
+
+    def test_garbage_fragment_im(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Im', 'text')
+        assert author == ''
+
+    def test_punctuation_author(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author(',', 'text')
+        assert author == ''
+
+    def test_double_corruption_fixed(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author('Englisches Sprichwortort', 'text')
+        assert author == 'Englisches Sprichwort'
+
+    def test_garbage_not_re_extracted(self, app):
+        from cleanup_service import _clean_author
+        # Text has " - 1. Petrus" — extraction would return '1' which is garbage
+        author, cat = _clean_author('1', '"Verse" - 1. Petrus 5,7')
+        assert author == ''
+
+    def test_numeric_comma_fragment(self, app):
+        from cleanup_service import _clean_author
+        author, cat = _clean_author(', 11', 'text')
+        assert author == ''
+
 
 class TestCleanCategory:
     def test_sprichw_completed(self, app):
@@ -116,6 +268,10 @@ class TestCleanCategory:
     def test_empty_stays_empty(self, app):
         from cleanup_service import _clean_category
         assert _clean_category('') == ''
+
+    def test_wiki_markup_stripped(self, app):
+        from cleanup_service import _clean_category
+        assert _clean_category("Griechenland'") == 'Griechenland'
 
 
 class TestRunFullCleanup:
@@ -153,8 +309,8 @@ class TestRunFullCleanup:
 
     def test_removes_duplicates(self, app):
         from cleanup_service import run_full_cleanup
-        q1 = Quote(text='Duplicate text', author='A', category='C')
-        q2 = Quote(text='Duplicate text', author='B', category='D')
+        q1 = Quote(text='Duplicate text', author='Author1', category='C')
+        q2 = Quote(text='Duplicate text', author='Author2', category='D')
         db.session.add_all([q1, q2])
         db.session.commit()
         min_id = min(q1.id, q2.id)
@@ -167,7 +323,7 @@ class TestRunFullCleanup:
 
     def test_removes_garbage(self, app):
         from cleanup_service import run_full_cleanup
-        q = Quote(text='', author='A', category='C')
+        q = Quote(text='', author='Author', category='C')
         db.session.add(q)
         db.session.commit()
         qid = q.id
@@ -185,6 +341,36 @@ class TestRunFullCleanup:
         run_full_cleanup()
         db.session.refresh(q)
         assert q.category == ''
+
+    def test_converts_aus_country(self, app):
+        from cleanup_service import run_full_cleanup
+        q = Quote(text='Wer den Pfennig nicht ehrt', author='Aus Deutschland', category='Geld')
+        db.session.add(q)
+        db.session.commit()
+
+        run_full_cleanup()
+        db.session.refresh(q)
+        assert q.author == 'Sprichwort aus Deutschland'
+
+    def test_strips_truncated_paren_from_author(self, app):
+        from cleanup_service import run_full_cleanup
+        q = Quote(text='Imagination is more important', author='Albert Einstein (25', category='')
+        db.session.add(q)
+        db.session.commit()
+
+        run_full_cleanup()
+        db.session.refresh(q)
+        assert q.author == 'Albert Einstein'
+
+    def test_clears_numeric_author(self, app):
+        from cleanup_service import run_full_cleanup
+        q = Quote(text='Bible verse text', author='1', category='Sorge')
+        db.session.add(q)
+        db.session.commit()
+
+        run_full_cleanup()
+        db.session.refresh(q)
+        assert q.author == ''
 
     def test_cli_command(self, app):
         from app import app as flask_app
