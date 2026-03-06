@@ -15,58 +15,75 @@ SOURCE_KEYWORDS = (
 def parse_sql_inserts(sql_text: str) -> list[tuple[int, str, str]]:
     """Parse INSERT statements from the SQL dump, returning (id, zitat, autor_herkunft_thema) tuples."""
     rows: list[tuple[int, str, str]] = []
-    # Match each row tuple: (id, 'zitat', 'autor_herkunft_thema')
-    # The SQL uses '' for escaped single quotes inside strings
-    i = 0
     length = len(sql_text)
 
-    while i < length:
-        # Find start of a row tuple
-        idx = sql_text.find('(', i)
-        if idx == -1:
+    # Only parse after VALUES keywords to avoid matching CREATE TABLE etc.
+    search_start = 0
+    while True:
+        values_idx = sql_text.find('VALUES', search_start)
+        if values_idx == -1:
+            values_idx = sql_text.find('values', search_start)
+        if values_idx == -1:
             break
 
-        # Check if this looks like a data row (starts with a number)
-        after_paren = idx + 1
-        # Skip whitespace
-        while after_paren < length and sql_text[after_paren] in ' \t\n\r':
-            after_paren += 1
+        i = values_idx + 6  # skip past "VALUES"
 
-        if after_paren >= length or not sql_text[after_paren].isdigit():
-            i = idx + 1
-            continue
+        while i < length:
+            # Find start of a row tuple
+            idx = sql_text.find('(', i)
+            if idx == -1:
+                break
 
-        # Parse the id
-        num_start = after_paren
-        while after_paren < length and sql_text[after_paren].isdigit():
-            after_paren += 1
-        row_id = int(sql_text[num_start:after_paren])
+            after_paren = idx + 1
+            while after_paren < length and sql_text[after_paren] in ' \t\n\r':
+                after_paren += 1
 
-        # Skip to first quote (the zitat field)
-        quote_start = sql_text.find("'", after_paren)
-        if quote_start == -1:
-            i = after_paren
-            continue
+            if after_paren >= length or not sql_text[after_paren].isdigit():
+                i = idx + 1
+                continue
 
-        # Parse the zitat string (handling '' escapes)
-        zitat, end_pos = _parse_sql_string(sql_text, quote_start)
-        if zitat is None:
-            i = after_paren
-            continue
+            # Parse the id
+            num_start = after_paren
+            while after_paren < length and sql_text[after_paren].isdigit():
+                after_paren += 1
+            # Must be followed by comma to be a data row
+            rest = sql_text[after_paren:after_paren + 5].lstrip()
+            if not rest.startswith(','):
+                i = idx + 1
+                continue
+            row_id = int(sql_text[num_start:after_paren])
 
-        # Skip to next quote (the autor_herkunft_thema field)
-        quote_start2 = sql_text.find("'", end_pos)
-        if quote_start2 == -1:
-            i = end_pos
-            continue
+            # Skip to first quote (the zitat field)
+            quote_start = sql_text.find("'", after_paren)
+            if quote_start == -1:
+                i = after_paren
+                break
 
-        category, end_pos2 = _parse_sql_string(sql_text, quote_start2)
-        if category is None:
-            i = end_pos
-            continue
+            zitat, end_pos = _parse_sql_string(sql_text, quote_start)
+            if zitat is None:
+                i = after_paren
+                continue
 
-        rows.append((row_id, zitat, category))
-        i = end_pos2
+            # Skip to next quote (the autor_herkunft_thema field)
+            quote_start2 = sql_text.find("'", end_pos)
+            if quote_start2 == -1:
+                i = end_pos
+                break
+
+            category, end_pos2 = _parse_sql_string(sql_text, quote_start2)
+            if category is None:
+                i = end_pos
+                continue
+
+            rows.append((row_id, zitat, category))
+            i = end_pos2
+
+            # Check if this INSERT statement ended (semicolon after closing paren)
+            tail = sql_text[end_pos2:end_pos2 + 10].lstrip()
+            if tail.startswith(';'):
+                break
+
+        search_start = i if i > values_idx + 6 else values_idx + 6
 
     return rows
 
