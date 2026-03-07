@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import unicodedata
 from collections import Counter
 
 from extensions import db
@@ -10,7 +11,7 @@ from models import Quote
 logger = logging.getLogger(__name__)
 
 # Current cleanup version — bump to re-run on existing installs.
-CLEANUP_VERSION = 16
+CLEANUP_VERSION = 17
 
 # Map truncated "X Sprichw" -> full "X Sprichwort" with correct gender.
 # The original VARCHAR(255) truncated these nationality-proverb labels.
@@ -370,6 +371,54 @@ def _strip_wiki_markup(value: str) -> str:
     if value.endswith("'") and not value.endswith("''"):
         value = value[:-1].rstrip()
     return value
+
+
+def _has_non_latin_chars(text: str) -> bool:
+    """Check if text contains non-Latin script characters (Arabic, CJK, Cyrillic, etc.)."""
+    # Allowed Unicode ranges: Basic Latin, Latin Extended, combining marks, common punctuation
+    for ch in text:
+        if ch.isascii():
+            continue
+        try:
+            name = unicodedata.name(ch, '')
+        except ValueError:
+            return True
+        # Allow Latin-based scripts and common marks
+        if any(prefix in name for prefix in (
+            'LATIN', 'SPACE', 'HYPHEN', 'DASH', 'APOSTROPHE', 'QUOTATION',
+            'COMMA', 'FULL STOP', 'COLON', 'SEMICOLON', 'COMBINING',
+            'NO-BREAK', 'MIDDLE DOT', 'MODIFIER', 'RIGHT SINGLE',
+            'LEFT SINGLE', 'RIGHT DOUBLE', 'LEFT DOUBLE', 'PRIME',
+            'INVERTED', 'CEDILLA', 'DIAERESIS', 'TILDE',
+        )):
+            continue
+        return True
+    return False
+
+
+def _is_sentence_like(text: str) -> bool:
+    """Check if text looks like a sentence/quote rather than a person name."""
+    if len(text) < 15:
+        return False
+    lower = text.lower()
+    # Starts with lowercase = sentence fragment
+    if text[0].islower():
+        return True
+    # Contains sentence-like markers
+    sentence_markers = (' is ', ' are ', ' was ', ' were ', ' will ', ' can ', ' has ',
+                        ' have ', ' do ', ' does ', ' the ', ' that ', ' this ',
+                        ' your ', ' you ', ' they ', ' not ', " don't", " doesn't",
+                        " won't", " can't", " isn't", " aren't",
+                        ' ist ', ' sind ', ' hat ', ' nicht ', ' wenn ', ' weil ')
+    if any(m in lower for m in sentence_markers):
+        return True
+    # Ends with period (sentences, not abbreviations)
+    if text.endswith('.') and len(text) > 30:
+        return True
+    # Too many words for a name (more than 8)
+    if len(text.split()) > 8:
+        return True
+    return False
 
 
 def _is_garbage_author(author: str) -> bool:
@@ -923,6 +972,10 @@ def _clean_author(author: str, text: str) -> tuple[str, str | None]:
     if fixed != author:
         author = fixed
 
+    # Final check: sentence-like authors (from CSV import garbage)
+    if _is_sentence_like(author):
+        return ('', None)
+
     return (author, None)
 
 
@@ -1067,6 +1120,18 @@ def run_full_cleanup() -> dict[str, int]:
 
     db.session.flush()
     logger.info('Dedup done: %d duplicates deleted', stats['duplicates_deleted'])
+
+    # --- Non-Latin author quotes: delete entirely ---
+    # Quotes with Arabic, CJK, Cyrillic etc. authors are from malformed CSV imports
+    all_quotes = Quote.query.all()
+    for quote in all_quotes:
+        author = (quote.author or '').strip()
+        if author and _has_non_latin_chars(author):
+            db.session.delete(quote)
+            stats['non_latin_deleted'] += 1
+    db.session.flush()
+    if stats['non_latin_deleted']:
+        logger.info('Deleted %d quotes with non-Latin authors', stats['non_latin_deleted'])
 
     # --- Garbage quotes: empty or placeholder text ---
     garbage = Quote.query.filter(

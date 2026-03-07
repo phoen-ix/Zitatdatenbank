@@ -60,7 +60,8 @@ docker compose build && docker compose up -d
 - Typing animation on animated themes processes all `.quote-text` elements, handles `<br>` nodes
 - Auth: Flask-Login with AdminUser model, env var auto-creation
 - Auto-import: Quotes imported on first startup if table is empty
-- Auto-cleanup: Versioned (CLEANUP_VERSION=16 in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump
+- Data files: Distributed as `data/data.tar.gz` (53MB), auto-extracted by entrypoint.sh on first start. Contains `zitate.sql` (German) and `quotes.csv` (English).
+- Auto-cleanup: Versioned (CLEANUP_VERSION in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Handles wiki markup, truncated authors, non-Latin scripts, sentence-like garbage authors, deduplication.
 - Auto-tag-migration: One-time migration of category → tags + default tags, gated by `tags_migrated` Setting
 - Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)

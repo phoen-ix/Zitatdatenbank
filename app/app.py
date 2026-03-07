@@ -219,14 +219,24 @@ def _auto_import():
     count = db.session.query(models.Quote).count()
     if count > 0:
         return
-    # Check standard data paths
+    # Import SQL dump (German quotes)
     for path in ['/data/zitate.sql', '/app/data/zitate.sql', 'data/zitate.sql']:
         if os.path.exists(path):
             logger.info('Auto-importing quotes from %s', path)
             from import_service import import_quotes_from_sql
             imported = import_quotes_from_sql(path)
-            logger.info('Auto-imported %d quotes', imported)
-            return
+            logger.info('Auto-imported %d quotes from SQL', imported)
+            break
+
+    # Import CSV (English quotes) if present
+    for path in ['/data/quotes.csv', '/app/data/quotes.csv', 'data/quotes.csv']:
+        if os.path.exists(path):
+            logger.info('Auto-importing quotes from %s', path)
+            from import_service import import_quotes_from_csv
+            tag_names = ['English', 'Englisch', 'Source: Kaggle']
+            imported = import_quotes_from_csv(path, tag_names)
+            logger.info('Auto-imported %d quotes from CSV', imported)
+            break
 
 
 def _auto_cleanup():

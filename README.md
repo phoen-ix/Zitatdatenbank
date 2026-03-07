@@ -44,11 +44,10 @@ Optimized for 500k+ quotes with:
 cp .env.example .env
 # Edit .env with your values (SECRET_KEY, passwords)
 
-# Place zitate.sql in data/ directory
 docker compose up -d
 ```
 
-The app auto-imports quotes on first startup and creates an admin user from environment variables.
+The data files (`data/data.tar.gz`) are extracted automatically on first startup. The app then auto-imports ~24.6k German quotes from `zitate.sql` and ~500k English quotes from `quotes.csv`, runs data cleanup (wiki markup, garbage authors, deduplication), and creates an admin user from environment variables.
 
 ## Development
 

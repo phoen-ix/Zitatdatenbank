@@ -28,7 +28,9 @@ build/
 # Root SQL dump (canonical copy is in data/)
 /zitate.sql
 
-# Large data files
+# Raw data files (distributed as data/data.tar.gz)
+data/zitate.sql
+data/quotes.csv
 *.csv
 analyze*.py
 
