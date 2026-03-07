@@ -15,7 +15,7 @@ A multilingual (DE/EN) web application for browsing, searching, and managing a c
 - **Particle effects** - bubbles, stars, embers etc. with configurable count
 - **Line break rendering** - `//` in quote text displayed as proper line breaks
 - **Bilingual** German/English UI with one-click language switching
-- **REST API** for random quotes (`/api/random`)
+- **REST API** for quotes with filtering, search, and pagination
 
 ## Performance
 
@@ -88,3 +88,39 @@ Default credentials are set via `ADMIN_USERNAME` and `ADMIN_PASSWORD` environmen
 | | Feuer |
 
 All theme colors and effects are customizable per-theme through the admin settings UI. Animated themes include typing animations and particle effects (bubbles, stars, embers) with configurable speed and count.
+
+## API
+
+All endpoints return JSON and are rate-limited.
+
+### `GET /api/random`
+
+Returns a random quote.
+
+```json
+{"id": 42, "text": "The only way...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
+```
+
+### `GET /api/quotes`
+
+Browse and search quotes with pagination.
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `page` | Page number | 1 |
+| `per_page` | Results per page (max 100) | 20 |
+| `author` | Filter by exact author name | — |
+| `tag` | Filter by tag name | — |
+| `q` | Full-text search in text and author | — |
+
+```json
+{"quotes": [...], "page": 1, "per_page": 20, "has_next": true, "has_prev": false}
+```
+
+### `GET /api/quotes/<id>`
+
+Returns a single quote by ID.
+
+```json
+{"id": 42, "text": "The only way...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
+```

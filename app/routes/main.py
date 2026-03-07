@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 
-from extensions import db
+from extensions import db, limiter
 from models import Quote, Tag, quote_tags
 from helpers import _, get_setting, get_cached_stat, get_cached_result, FastPagination
 from config import QUOTES_PER_PAGE
@@ -270,18 +270,70 @@ def quote_detail(quote_id):
                            related_by_author=related_by_author)
 
 
+def _quote_to_dict(quote):
+    """Convert a Quote to an API-friendly dict."""
+    return {
+        'id': quote.id,
+        'text': quote.text,
+        'author': quote.author or '',
+        'tags': [t.name for t in quote.tags],
+    }
+
+
 @main_bp.route('/api/random')
+@limiter.limit('30/minute')
 def api_random():
     quote = _random_quote()
 
     if not quote:
         return jsonify({'error': 'No quotes available'}), 404
+    return jsonify(_quote_to_dict(quote))
+
+
+@main_bp.route('/api/quotes')
+@limiter.limit('30/minute')
+def api_quotes():
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 20, type=int), 100)
+    author = request.args.get('author', '').strip()
+    tag = request.args.get('tag', '').strip()
+    q = request.args.get('q', '').strip()
+
+    query = Quote.query.options(selectinload(Quote.tags))
+
+    if author:
+        query = query.filter(Quote.author == author)
+    if tag:
+        query = query.filter(Quote.tags.any(Tag.name == tag))
+    if q:
+        if db.engine.dialect.name == 'sqlite':
+            query = query.filter(
+                or_(Quote.text.ilike(f'%{q}%'), Quote.author.ilike(f'%{q}%')))
+        else:
+            query = query.filter(or_(Quote.text.match(q), Quote.author.match(q)))
+
+    query = query.order_by(Quote.id.desc())
+
+    items = query.offset((page - 1) * per_page).limit(per_page + 1).all()
+    has_more = len(items) > per_page
+    items = items[:per_page]
+
     return jsonify({
-        'id': quote.id,
-        'text': quote.text,
-        'author': quote.author or '',
-        'tags': [t.name for t in quote.tags],
+        'quotes': [_quote_to_dict(q) for q in items],
+        'page': page,
+        'per_page': per_page,
+        'has_next': has_more,
+        'has_prev': page > 1,
     })
+
+
+@main_bp.route('/api/quotes/<int:quote_id>')
+@limiter.limit('60/minute')
+def api_quote_detail(quote_id):
+    quote = db.session.get(Quote, quote_id)
+    if not quote:
+        return jsonify({'error': 'Quote not found'}), 404
+    return jsonify(_quote_to_dict(quote))
 
 
 @main_bp.route('/credits')

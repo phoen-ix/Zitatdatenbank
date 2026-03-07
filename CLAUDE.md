@@ -38,10 +38,10 @@ docker compose build && docker compose up -d
 - `app/import_service.py` - SQL parser + data import logic
 - `app/backup_service.py` - Backup create/restore/prune
 - `app/cleanup_service.py` - Quote data cleanup (wiki markup, truncated authors, dedup)
-- `app/routes/` - main.py (public + credits), admin.py (admin CRUD + tags + per-theme settings), auth.py (login/logout)
+- `app/routes/` - main.py (public + credits + REST API), admin.py (admin CRUD + tags + per-theme settings), auth.py (login/logout)
 - `app/templates/` - Jinja2 templates (tags.html, credits.html, admin/tags.html)
 - `app/static/css/animations.css` - Animated theme styles, typing cursor, particle containers
-- `tests/` - pytest test suite (228 tests)
+- `tests/` - pytest test suite (236 tests)
 
 ## CLI Commands
 - `flask import-quotes <path>` - Import quotes from SQL dump
@@ -66,4 +66,5 @@ docker compose build && docker compose up -d
 - Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
 - Performance: In-memory cache (`_stats_cache` in helpers.py, 5-min TTL) for stats, theme, tags, settings. `invalidate_stats_cache()` clears all caches on data/settings changes. `FastPagination` skips COUNT queries. Keyset pagination on browse (cursor param). `selectinload(Quote.tags)` for batch tag loading. FULLTEXT MATCH for search on MariaDB.
+- REST API: `/api/random`, `/api/quotes` (browse/search/filter), `/api/quotes/<id>`. Rate-limited (30/min browse, 60/min detail). Returns JSON with id, text, author, tags.
 - Tests: SQLite in-memory, CSRF disabled, session-scoped app fixture. Cache invalidated between tests in conftest.py `clean_db` fixture.

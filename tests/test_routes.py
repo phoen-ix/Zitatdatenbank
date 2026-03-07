@@ -128,6 +128,99 @@ def test_api_random_empty(client, app):
     assert response.status_code == 404
 
 
+def test_api_quotes(client, app, make_quote):
+    with app.app_context():
+        for i in range(3):
+            make_quote(text=f'API quote {i}', author='TestAuthor')
+    response = client.get('/api/quotes')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data['quotes']) == 3
+    assert data['page'] == 1
+    assert 'has_next' in data
+    assert data['quotes'][0]['author'] == 'TestAuthor'
+    assert 'id' in data['quotes'][0]
+    assert 'tags' in data['quotes'][0]
+
+
+def test_api_quotes_filter_author(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='By Goethe', author='Goethe')
+        make_quote(text='By Schiller', author='Schiller')
+    response = client.get('/api/quotes?author=Goethe')
+    data = response.get_json()
+    assert len(data['quotes']) == 1
+    assert data['quotes'][0]['author'] == 'Goethe'
+
+
+def test_api_quotes_filter_tag(client, app, make_quote):
+    from models import Tag
+    from extensions import db as _db
+    with app.app_context():
+        tag = Tag(name='Wisdom')
+        _db.session.add(tag)
+        _db.session.flush()
+        q = make_quote(text='Wise quote', author='Sage')
+        q.tags.append(tag)
+        _db.session.commit()
+        make_quote(text='Other quote', author='Other')
+    response = client.get('/api/quotes?tag=Wisdom')
+    data = response.get_json()
+    assert len(data['quotes']) == 1
+    assert 'Wisdom' in data['quotes'][0]['tags']
+
+
+def test_api_quotes_search(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='The meaning of life', author='Philosopher')
+        make_quote(text='Something else', author='Other')
+    response = client.get('/api/quotes?q=meaning')
+    data = response.get_json()
+    assert len(data['quotes']) >= 1
+    assert any('meaning' in q['text'].lower() for q in data['quotes'])
+
+
+def test_api_quotes_pagination(client, app, make_quote):
+    with app.app_context():
+        for i in range(5):
+            make_quote(text=f'Paginated {i}')
+    response = client.get('/api/quotes?per_page=2&page=1')
+    data = response.get_json()
+    assert len(data['quotes']) == 2
+    assert data['has_next'] is True
+    assert data['has_prev'] is False
+
+    response = client.get('/api/quotes?per_page=2&page=2')
+    data = response.get_json()
+    assert len(data['quotes']) == 2
+    assert data['has_prev'] is True
+
+
+def test_api_quotes_per_page_capped(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='Test')
+    response = client.get('/api/quotes?per_page=999')
+    data = response.get_json()
+    assert data['per_page'] == 100
+
+
+def test_api_quote_detail(client, app, make_quote):
+    with app.app_context():
+        q = make_quote(text='Detail quote', author='Author')
+        qid = q.id
+    response = client.get(f'/api/quotes/{qid}')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['id'] == qid
+    assert data['text'] == 'Detail quote'
+    assert data['author'] == 'Author'
+
+
+def test_api_quote_detail_not_found(client, app):
+    response = client.get('/api/quotes/99999')
+    assert response.status_code == 404
+
+
 def test_health(client, app):
     response = client.get('/health')
     assert response.status_code == 200
