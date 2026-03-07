@@ -61,6 +61,8 @@ def browse():
     per_page = int(get_cached_result('quotes_per_page',
         lambda: get_setting('quotes_per_page', str(QUOTES_PER_PAGE))))
     cursor = request.args.get('cursor', type=int)
+    if cursor is not None and cursor < 1:
+        cursor = None
     cursor_dir = request.args.get('_cursor_dir', 'next')  # 'next' or 'prev'
 
     query = Quote.query.options(selectinload(Quote.tags))
@@ -134,7 +136,7 @@ def browse():
 
 @main_bp.route('/browse/authors')
 def authors():
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     letter = request.args.get('letter', '').strip()
     per_page = 50
 
@@ -172,7 +174,7 @@ def authors():
 
 @main_bp.route('/browse/tags')
 def tags():
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     per_page = 50
 
     # Cache the full tag list with counts (small number of tags)

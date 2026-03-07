@@ -217,3 +217,47 @@ def test_admin_backup_create(admin_client, app, tmp_path):
             assert response.status_code == 200
     finally:
         backup_service.BACKUP_DIR = original
+
+
+def test_admin_edit_quote_get(admin_client, app, make_quote):
+    with app.app_context():
+        q = make_quote(text='Edit me', author='Author')
+        qid = q.id
+    response = admin_client.get(f'/admin/quotes/{qid}/edit')
+    assert response.status_code == 200
+    assert b'Edit me' in response.data
+
+
+def test_admin_edit_nonexistent_quote(admin_client, app):
+    response = admin_client.get('/admin/quotes/99999/edit', follow_redirects=True)
+    assert response.status_code == 200
+
+
+def test_admin_backup_download_invalid_filename(admin_client, app):
+    response = admin_client.get('/admin/backup/../../etc/passwd/download')
+    assert response.status_code == 404
+
+
+def test_admin_backup_delete_invalid_filename(admin_client, app):
+    response = admin_client.post('/admin/backup/../evil/delete')
+    assert response.status_code == 404
+
+
+def test_admin_requires_login(client, app):
+    """All admin routes should redirect to login when not authenticated."""
+    for path in ['/admin/', '/admin/quotes', '/admin/tags', '/admin/settings', '/admin/backup']:
+        response = client.get(path)
+        assert response.status_code == 302, f'{path} should redirect'
+
+
+def test_admin_settings_invalid_quotes_per_page(admin_client, app):
+    with app.app_context():
+        response = admin_client.post('/admin/settings', data={
+            'tab': 'general',
+            'quotes_per_page': 'abc',
+            'site_name': 'Test',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+        from helpers import get_setting
+        # Invalid input should default to 20
+        assert get_setting('quotes_per_page') == '20'

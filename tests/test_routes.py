@@ -268,3 +268,74 @@ def test_search_by_tag(client, app, make_quote):
     response = client.get('/search?q=Philosophy')
     assert response.status_code == 200
     assert b'Quote with tag' in response.data
+
+
+def test_404_html(client, app):
+    response = client.get('/nonexistent-page')
+    assert response.status_code == 404
+    assert b'404' in response.data
+
+
+def test_404_api_quote(client, app):
+    response = client.get('/api/quotes/99999')
+    assert response.status_code == 404
+    data = response.get_json()
+    assert 'error' in data
+
+
+def test_404_api_unknown_route(client, app):
+    response = client.get('/api/nonexistent')
+    assert response.status_code == 404
+    data = response.get_json()
+    assert data['status'] == 'error'
+
+
+def test_security_headers(client, app):
+    response = client.get('/')
+    assert response.headers.get('X-Frame-Options') == 'DENY'
+    assert response.headers.get('X-Content-Type-Options') == 'nosniff'
+
+
+def test_negative_page_clamped(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='Test')
+    response = client.get('/browse?page=-5')
+    assert response.status_code == 200
+
+
+def test_negative_cursor_ignored(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='Test')
+    response = client.get('/browse?cursor=-1&sort=newest')
+    assert response.status_code == 200
+
+
+def test_api_per_page_zero_clamped(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='Test')
+    response = client.get('/api/quotes?per_page=0')
+    data = response.get_json()
+    assert data['per_page'] == 1
+
+
+def test_api_negative_page_clamped(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='Test')
+    response = client.get('/api/quotes?page=-1')
+    data = response.get_json()
+    assert data['page'] == 1
+
+
+def test_xss_in_search_escaped(client, app):
+    response = client.get('/search?q=<script>alert(1)</script>')
+    assert response.status_code == 200
+    assert b'<script>alert(1)</script>' not in response.data
+
+
+def test_xss_in_quote_escaped(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='<script>alert("xss")</script>', author='<b>bold</b>')
+    response = client.get('/browse')
+    assert response.status_code == 200
+    assert b'<script>alert' not in response.data
+    assert b'<b>bold</b>' not in response.data

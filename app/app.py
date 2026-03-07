@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timedelta
 
 import click
-from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify
+from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify, render_template
 from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash
 
@@ -98,6 +98,21 @@ def load_user(user_id):
 def unauthorized():
     flash(_('login_required'), 'error')
     return redirect(url_for('auth.login', next=request.url))
+
+
+@app.errorhandler(404)
+def not_found_handler(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'status': 'error', 'detail': 'Not found'}), 404
+    return render_template('errors/404.html'), 404
+
+
+@app.errorhandler(500)
+def internal_error_handler(e):
+    logger.error('Internal server error: %s', e)
+    if request.path.startswith('/api/'):
+        return jsonify({'status': 'error', 'detail': 'Internal server error'}), 500
+    return render_template('errors/500.html'), 500
 
 
 @app.errorhandler(429)

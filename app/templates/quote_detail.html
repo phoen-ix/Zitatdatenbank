@@ -36,7 +36,7 @@
     </div>
 </div>
 
-{% if related_by_author %}
+{% if related_by_author and quote.author %}
 <h4>{{ _('more_by_author') }} {{ quote.author }}</h4>
 <div class="list-group mb-4">
     {% for rq in related_by_author %}

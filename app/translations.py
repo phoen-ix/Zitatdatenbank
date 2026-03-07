@@ -140,4 +140,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'go': {'de': 'Los', 'en': 'Go'},
     'footer_text': {'de': 'Zitatdatenbank', 'en': 'Quote Database'},
     'id': {'de': 'Nr.', 'en': 'No.'},
+    'page_not_found': {'de': 'Seite nicht gefunden.', 'en': 'Page not found.'},
+    'internal_error': {'de': 'Ein interner Fehler ist aufgetreten.', 'en': 'An internal error occurred.'},
 }

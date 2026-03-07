@@ -59,9 +59,11 @@ def dashboard():
 
 @admin_bp.route('/quotes')
 def quotes():
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     q = request.args.get('q', '').strip()
     cursor = request.args.get('cursor', type=int)
+    if cursor is not None and cursor < 1:
+        cursor = None
     cursor_dir = request.args.get('_cursor_dir', 'next')
 
     query = Quote.query.options(selectinload(Quote.tags))
@@ -201,7 +203,7 @@ def delete_quote(quote_id):
 
 @admin_bp.route('/tags')
 def tags_list():
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     q = request.args.get('q', '').strip()
     per_page = 50
 
