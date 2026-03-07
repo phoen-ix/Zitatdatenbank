@@ -231,38 +231,41 @@ def _ensure_admin():
     if not password:
         return
     existing = models.AdminUser.query.filter_by(username=username).first()
-    if not existing:
+    if existing:
+        logger.info('       Admin user "%s" already exists.', username)
+    else:
         admin = models.AdminUser(
             username=username,
             password_hash=generate_password_hash(password),
         )
         db.session.add(admin)
         db.session.commit()
-        logger.info('Admin user "%s" created from env vars', username)
+        logger.info('       Admin user "%s" created.', username)
 
 
 def _auto_import():
     """Auto-import quotes on first startup if table is empty."""
     count = db.session.query(models.Quote).count()
     if count > 0:
+        logger.info('       Database already has %d quotes, skipping import.', count)
         return
     # Import SQL dump (German quotes)
     for path in ['/data/zitate.sql', '/app/data/zitate.sql', 'data/zitate.sql']:
         if os.path.exists(path):
-            logger.info('Auto-importing quotes from %s', path)
+            logger.info('       Importing German quotes from %s ...', path)
             from import_service import import_quotes_from_sql
             imported = import_quotes_from_sql(path)
-            logger.info('Auto-imported %d quotes from SQL', imported)
+            logger.info('       Imported %d German quotes.', imported)
             break
 
     # Import CSV (English quotes) if present
     for path in ['/data/quotes.csv', '/app/data/quotes.csv', 'data/quotes.csv']:
         if os.path.exists(path):
-            logger.info('Auto-importing quotes from %s', path)
+            logger.info('       Importing English quotes from %s ...', path)
             from import_service import import_quotes_from_csv
             tag_names = ['English', 'Englisch', 'Source: Kaggle']
             imported = import_quotes_from_csv(path, tag_names)
-            logger.info('Auto-imported %d quotes from CSV', imported)
+            logger.info('       Imported %d English quotes.', imported)
             break
 
 
@@ -272,26 +275,29 @@ def _auto_cleanup():
     from cleanup_service import CLEANUP_VERSION
     current = int(get_setting('cleanup_version', '0'))
     if current >= CLEANUP_VERSION:
+        logger.info('       Cleanup already at v%d, nothing to do.', current)
         return
     count = db.session.query(models.Quote).count()
     if count == 0:
         return
-    logger.info('Running automatic quote cleanup (v%d -> v%d)...', current, CLEANUP_VERSION)
+    logger.info('       Cleaning up %d quotes (v%d → v%d)... this may take a few minutes.',
+                count, current, CLEANUP_VERSION)
     from cleanup_service import run_full_cleanup
     stats = run_full_cleanup()
     set_setting('cleanup_version', str(CLEANUP_VERSION))
-    logger.info('Auto-cleanup complete: %s', stats)
+    logger.info('       Cleanup complete: %s', stats)
 
 
 def _auto_migrate_tags():
     """Migrate category field to tags (one-time). Adds default tags to all quotes."""
     from helpers import get_setting, set_setting
     if get_setting('tags_migrated', '') == '1':
+        logger.info('       Tags already migrated.')
         return
     count = db.session.query(models.Quote).count()
     if count == 0:
         return
-    logger.info('Migrating categories to tags...')
+    logger.info('       Migrating categories to tags for %d quotes...', count)
 
     # Create default tags
     default_tag_names = ['Deutsch', 'German', 'Quelle: Zitatdatenbank']
@@ -341,11 +347,11 @@ def _auto_migrate_tags():
                 q.tags.append(cat_tag)
         if (i + 1) % 1000 == 0:
             db.session.flush()
-            logger.info('Tagged %d / %d quotes', i + 1, len(all_quotes))
+            logger.info('       Tagged %d / %d quotes...', i + 1, len(all_quotes))
 
     db.session.commit()
     set_setting('tags_migrated', '1')
-    logger.info('Tag migration complete: %d quotes, %d tags created', len(all_quotes), len(tag_cache))
+    logger.info('       Tag migration complete: %d quotes, %d tags.', len(all_quotes), len(tag_cache))
 
 
 def _ensure_fulltext_indexes():
@@ -358,13 +364,15 @@ def _ensure_fulltext_indexes():
             "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND INDEX_NAME = 'ft_quote_text'"
         ))
         if result.fetchone():
-            return  # already exists
+            logger.info('       FULLTEXT indexes already exist.')
+            return
+        logger.info('       Creating FULLTEXT indexes (may take a moment)...')
         db.session.execute(db.text('ALTER TABLE quote ADD FULLTEXT INDEX ft_quote_text (text)'))
         db.session.execute(db.text('ALTER TABLE quote ADD FULLTEXT INDEX ft_quote_author (author)'))
         db.session.commit()
-        logger.info('Created FULLTEXT indexes on quote table')
+        logger.info('       FULLTEXT indexes created.')
     except Exception as e:
-        logger.warning('Could not create FULLTEXT indexes: %s', e)
+        logger.warning('       Could not create FULLTEXT indexes: %s', e)
         db.session.rollback()
 
 
@@ -372,17 +380,39 @@ def _ensure_fulltext_indexes():
 if os.environ.get('FLASK_TESTING') != '1':
     from sqlalchemy.exc import OperationalError
 
+    _startup_start = time.monotonic()
+    logger.info('='*60)
+    logger.info('  Zitatdatenbank — Starting up')
+    logger.info('='*60)
+
     max_retries = 5
     for attempt in range(1, max_retries + 1):
         try:
             with app.app_context():
+                logger.info('[1/6] Connecting to database...')
                 db.session.execute(db.text('SELECT 1'))
                 db.create_all()
+                logger.info('[1/6] Database connected.')
+
+                logger.info('[2/6] Checking admin user...')
                 _ensure_admin()
+
+                logger.info('[3/6] Checking for data to import...')
                 _auto_import()
+
+                logger.info('[4/6] Running data cleanup...')
                 _auto_cleanup()
+
+                logger.info('[5/6] Migrating tags...')
                 _auto_migrate_tags()
+
+                logger.info('[6/6] Ensuring search indexes...')
                 _ensure_fulltext_indexes()
+
+            _elapsed = time.monotonic() - _startup_start
+            logger.info('='*60)
+            logger.info('  Startup complete in %.1fs — ready to serve', _elapsed)
+            logger.info('='*60)
             break
         except OperationalError:
             if attempt == max_retries:

@@ -276,10 +276,10 @@ def import_quotes_from_csv(csv_path: str, default_tag_names: list[str] | None = 
             count += 1
             if count % batch_size == 0:
                 db.session.commit()
-                logger.info('Imported %d quotes from CSV', count)
+                logger.info('       Imported %d CSV quotes...', count)
 
     db.session.commit()
-    logger.info('CSV import complete: %d quotes', count)
+    logger.info('       CSV import complete: %d quotes.', count)
     return count
 
 
@@ -309,8 +309,8 @@ def import_quotes_from_sql(sql_path: str) -> int:
 
         if (i + 1) % batch_size == 0:
             db.session.commit()
-            logger.info('Imported %d / %d quotes', i + 1, len(rows))
+            logger.info('       Imported %d / %d SQL quotes...', i + 1, len(rows))
 
     db.session.commit()
-    logger.info('Import complete: %d quotes', count)
+    logger.info('       SQL import complete: %d quotes.', count)
     return count
