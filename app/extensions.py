@@ -10,5 +10,5 @@ from flask_login import LoginManager
 db: SQLAlchemy = SQLAlchemy()
 csrf: CSRFProtect = CSRFProtect()
 migrate: Migrate = Migrate()
-limiter: Limiter = Limiter(key_func=get_remote_address, storage_uri="memory://", default_limits=[])
+limiter: Limiter = Limiter(key_func=get_remote_address, storage_uri="memory://", default_limits=[], headers_enabled=True)
 login_manager: LoginManager = LoginManager()

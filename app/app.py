@@ -99,7 +99,7 @@ def unauthorized():
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    if request.is_json:
+    if request.is_json or request.path.startswith('/api/'):
         return jsonify({'status': 'error', 'detail': str(e.description)}), 429
     flash('Too many requests. Please wait and try again.', 'error')
     return redirect(request.referrer or url_for('main.index'))
