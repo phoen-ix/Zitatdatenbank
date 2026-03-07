@@ -181,12 +181,15 @@ def authors():
     # Extract letters from cached data
     letters = sorted(set(a[0].upper() for a, c in all_authors if a and a[0].isalpha()))
 
+    pagination = FastPagination(authors_page, page, per_page, page < total_pages)
+    pagination.total = total
+    pagination.pages = total_pages
+
     return render_template('authors.html',
                            authors=authors_page,
+                           pagination=pagination,
                            letters=letters,
                            active_letter=letter,
-                           page=page,
-                           total_pages=total_pages,
                            total=total)
 
 
@@ -210,10 +213,13 @@ def tags():
     total_pages = max(1, (total + per_page - 1) // per_page)
     tags_page = all_tags[(page - 1) * per_page: page * per_page]
 
+    pagination = FastPagination(tags_page, page, per_page, page < total_pages)
+    pagination.total = total
+    pagination.pages = total_pages
+
     return render_template('tags.html',
                            tags=tags_page,
-                           page=page,
-                           total_pages=total_pages,
+                           pagination=pagination,
                            total=total)
 
 

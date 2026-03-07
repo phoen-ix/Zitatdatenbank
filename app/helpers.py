@@ -129,14 +129,24 @@ class FastPagination:
         self.total = None
         self.pages = None
 
-    def iter_pages(self, left_edge=2, left_current=2, right_current=5, right_edge=2):
-        """Yield page numbers around current page (without knowing total)."""
-        # Show a window around the current page
-        start = max(1, self.page - left_current)
-        end = self.page + right_current + (1 if self.has_next else 0)
-        for p in range(start, end + 1):
-            if p == self.page or p >= 1:
-                yield p
+    def iter_pages(self, left_edge=1, left_current=1, right_current=2, right_edge=1):
+        """Yield page numbers with None for ellipsis gaps."""
+        if self.pages is not None:
+            last = 0
+            for num in range(1, self.pages + 1):
+                if (num <= left_edge or
+                    (self.page - left_current <= num <= self.page + right_current) or
+                    num > self.pages - right_edge):
+                    if last + 1 != num:
+                        yield None
+                    yield num
+                    last = num
+        else:
+            start = max(1, self.page - left_current)
+            end = self.page + right_current + (1 if self.has_next else 0)
+            for p in range(start, end + 1):
+                if p >= 1:
+                    yield p
 
 
 def hex_to_rgb(hex_color: str) -> str:
