@@ -95,10 +95,11 @@ All theme colors and effects are customizable per-theme through the admin settin
 - **X-Frame-Options: DENY**, **X-Content-Type-Options: nosniff**
 - **CSRF** protection on all forms (Flask-WTF)
 - **Rate limiting** on login (10/min) and API endpoints (30–60/min) with `X-RateLimit-*` headers
-- **Session security** — HttpOnly, SameSite=Lax cookies, 8h timeout
-- **Input validation** — numeric bounds, hex color format, filename whitelist, page clamping
-- **Open redirect prevention** on login `next` parameter
-- **Safe backup restore** — tar member whitelist, no credentials in backup files
+- **Session security** — HttpOnly, SameSite=Lax, Secure cookies, 8h timeout
+- **Input validation** — numeric bounds, hex color format, filename whitelist, page clamping, FULLTEXT operator sanitization, LIKE wildcard escaping
+- **Open redirect prevention** on login `next` parameter and `Referer`-based redirects
+- **Safe backups** — excludes app state tables (settings, admin users), tar rejects symlinks
+- **Data integrity** — `ON DELETE CASCADE` on foreign keys, `IntegrityError` handling on concurrent writes
 
 ## API
 

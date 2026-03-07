@@ -42,7 +42,7 @@ docker compose build && docker compose up -d
 - `app/templates/` - Jinja2 templates (tags.html, credits.html, admin/tags.html)
 - `app/static/css/animations.css` - Animated theme styles, typing cursor, particle containers
 - `app/templates/errors/` - Custom 404/500 error pages
-- `tests/` - pytest test suite (251 tests)
+- `tests/` - pytest test suite (264 tests)
 
 ## CLI Commands
 - `flask import-quotes <path>` - Import quotes from SQL dump
@@ -69,7 +69,10 @@ docker compose build && docker compose up -d
 - Performance: In-memory cache (`_stats_cache` in helpers.py, 5-min TTL) for stats, theme, tags, settings. `invalidate_stats_cache()` clears all caches on data/settings changes. `FastPagination` skips COUNT queries. Keyset pagination on browse (cursor param). `selectinload(Quote.tags)` for batch tag loading. FULLTEXT MATCH for search on MariaDB.
 - REST API: `/api/random`, `/api/quotes` (browse/search/filter), `/api/quotes/<id>`. Rate-limited (30/min browse, 60/min detail). Returns JSON with id, text, author, tags. `X-RateLimit-*` headers on all responses.
 - Security headers: CSP with nonce-based script-src, X-Frame-Options: DENY, X-Content-Type-Options: nosniff. CSRF on all forms.
-- Input validation: quotes_per_page (int 5-100), site_name (max 100 chars), color inputs (hex format), backup filenames (strict regex), page/per_page clamped to valid ranges. Cursor values < 1 ignored.
+- Input validation: quotes_per_page (int 5-100), site_name (max 100 chars), color inputs (hex format), backup filenames (strict regex), page/per_page clamped to valid ranges. Cursor values < 1 ignored. FULLTEXT boolean operators sanitized. LIKE wildcards escaped.
 - Error handling: Custom 404/500 handlers. JSON responses for `/api/` routes, HTML templates for browser requests.
-- Backup: SQL dump only (no credentials). Restore validates tar members. Filename whitelist on download/restore/delete.
+- Backup: SQL dump excludes app state tables (setting, admin_user, backup_log, alembic_version). Restore validates tar members and rejects symlinks. Filename whitelist on download/restore/delete.
+- Atomicity: `set_setting(commit=False)` for batch operations, single commit per settings save. IntegrityError handling on tag creation.
+- Session: SESSION_COOKIE_SECURE in production, HttpOnly, SameSite=Lax, 8h timeout.
+- DB integrity: ON DELETE CASCADE on quote_tags FKs, index on tag_id.
 - Tests: SQLite in-memory, CSRF disabled, rate limiter disabled, session-scoped app fixture. Cache invalidated between tests in conftest.py `clean_db` fixture.
