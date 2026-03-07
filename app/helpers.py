@@ -20,11 +20,12 @@ def get_setting(key: str, default: str | None = None) -> str | None:
     return s.value if s else default
 
 
-def set_setting(key: str, value: str) -> None:
+def set_setting(key: str, value: str, *, commit: bool = True) -> None:
     s = db.session.get(Setting, key) or Setting(key=key)
     s.value = value
     db.session.add(s)
-    db.session.commit()
+    if commit:
+        db.session.commit()
 
 
 def get_lang() -> str:

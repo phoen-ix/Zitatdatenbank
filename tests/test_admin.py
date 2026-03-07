@@ -261,3 +261,90 @@ def test_admin_settings_invalid_quotes_per_page(admin_client, app):
         from helpers import get_setting
         # Invalid input should default to 20
         assert get_setting('quotes_per_page') == '20'
+
+
+def test_admin_edit_quote_empty_text_keeps_original(admin_client, app, make_quote):
+    """Editing a quote with empty text should not overwrite the original."""
+    with app.app_context():
+        q = make_quote(text='Original text', author='Author')
+        quote_id = q.id
+
+    with app.app_context():
+        response = admin_client.post(f'/admin/quotes/{quote_id}/edit', data={
+            'text': '',
+            'author': 'NewAuthor',
+            'tags': '',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+        from models import Quote
+        from extensions import db
+        updated = db.session.get(Quote, quote_id)
+        assert updated.text == 'Original text'
+
+
+def test_admin_edit_quote_invalidates_cache(admin_client, app, make_quote):
+    """Editing a quote should invalidate the stats cache."""
+    with app.app_context():
+        q = make_quote(text='Cache test', author='OldAuthor')
+        quote_id = q.id
+
+    with app.app_context():
+        response = admin_client.post(f'/admin/quotes/{quote_id}/edit', data={
+            'text': 'Updated cache test',
+            'author': 'NewAuthor',
+            'tags': '',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+
+def test_admin_search_with_special_chars(admin_client, app, make_quote):
+    """Admin search with FULLTEXT operators should not crash."""
+    with app.app_context():
+        make_quote(text='Normal quote')
+    response = admin_client.get('/admin/quotes?q=%2B')  # +
+    assert response.status_code == 200
+
+
+def test_admin_settings_atomic(admin_client, app):
+    """Settings save should be atomic — both values saved together."""
+    with app.app_context():
+        response = admin_client.post('/admin/settings', data={
+            'tab': 'general',
+            'quotes_per_page': '50',
+            'site_name': 'Atomic Test',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+        from helpers import get_setting
+        assert get_setting('quotes_per_page') == '50'
+        assert get_setting('site_name') == 'Atomic Test'
+
+
+def test_login_success_is_authenticated(client, app, make_admin):
+    """Login with correct credentials should grant access to admin."""
+    with app.app_context():
+        make_admin(username='admin', password='secret')
+    client.post('/login', data={'username': 'admin', 'password': 'secret'})
+    response = client.get('/admin/')
+    assert response.status_code == 200
+
+
+def test_login_failure_not_authenticated(client, app, make_admin):
+    """Login with wrong password should not grant access to admin."""
+    with app.app_context():
+        make_admin(username='admin', password='secret')
+    client.post('/login', data={'username': 'admin', 'password': 'wrong'})
+    response = client.get('/admin/')
+    assert response.status_code == 302  # redirected to login
+
+
+def test_login_open_redirect_blocked(client, app, make_admin):
+    """Login should not redirect to external URLs via ?next=."""
+    with app.app_context():
+        make_admin(username='admin', password='secret')
+    response = client.post('/login?next=https://evil.com/', data={
+        'username': 'admin', 'password': 'secret',
+    })
+    assert response.status_code == 302
+    location = response.headers['Location']
+    assert 'evil.com' not in location

@@ -47,7 +47,12 @@ def run_backup() -> tuple[bool, str]:
                 result = subprocess.run(
                     ['mysqldump', '-h', _db_host, '-P', _db_port,
                      f'-u{_db_user}', f'-p{_db_pass}',
-                     '--add-drop-table', _db_name],
+                     '--add-drop-table',
+                     '--ignore-table', f'{_db_name}.setting',
+                     '--ignore-table', f'{_db_name}.admin_user',
+                     '--ignore-table', f'{_db_name}.backup_log',
+                     '--ignore-table', f'{_db_name}.alembic_version',
+                     _db_name],
                     stdout=dump_file, stderr=subprocess.PIPE, timeout=300
                 )
             if result.returncode != 0:
@@ -80,9 +85,11 @@ def restore_backup(filename: str) -> tuple[bool, str]:
     try:
         with tempfile.TemporaryDirectory() as tmp:
             with tarfile.open(filepath, 'r:gz') as tar:
-                # Only extract expected files to prevent path traversal
+                # Only extract expected files; reject symlinks and path traversal
                 for member in tar.getmembers():
-                    if member.name not in ('dump.sql', '.env') or '..' in member.name:
+                    if member.name != 'dump.sql' or '..' in member.name:
+                        continue
+                    if member.issym() or member.islnk():
                         continue
                     tar.extract(member, tmp)
 

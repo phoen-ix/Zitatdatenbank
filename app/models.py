@@ -9,8 +9,8 @@ from extensions import db
 
 quote_tags = db.Table(
     'quote_tags',
-    db.Column('quote_id', db.Integer, db.ForeignKey('quote.id'), primary_key=True),
-    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),
+    db.Column('quote_id', db.Integer, db.ForeignKey('quote.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), primary_key=True, index=True),
 )
 
 

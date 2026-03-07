@@ -5,6 +5,7 @@ import re
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_from_directory, abort
 from flask_login import login_required
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from extensions import db
@@ -32,7 +33,11 @@ def _sync_tags(quote, tag_string):
         if not tag:
             tag = Tag(name=name)
             db.session.add(tag)
-            db.session.flush()
+            try:
+                db.session.flush()
+            except IntegrityError:
+                db.session.rollback()
+                tag = Tag.query.filter_by(name=name).first()
         new_tags.append(tag)
     quote.tags = new_tags
 
@@ -68,7 +73,8 @@ def quotes():
 
     query = Quote.query.options(selectinload(Quote.tags))
     if q:
-        like_pattern = f'%{q}%'
+        from routes.main import _escape_like, _sanitize_fulltext
+        like_pattern = f'%{_escape_like(q)}%'
 
         # Use cached tag map for fast tag matching
         def _load_tag_map():
@@ -83,7 +89,11 @@ def quotes():
         if db.engine.dialect.name == 'sqlite':
             conditions = [Quote.text.ilike(like_pattern), Quote.author.ilike(like_pattern)]
         else:
-            conditions = [Quote.text.match(q), Quote.author.match(q)]
+            ft_q = _sanitize_fulltext(q)
+            if ft_q:
+                conditions = [Quote.text.match(ft_q), Quote.author.match(ft_q)]
+            else:
+                conditions = [Quote.text.ilike(like_pattern), Quote.author.ilike(like_pattern)]
 
         if matching_tag_ids:
             tag_subquery = db.session.query(quote_tags.c.quote_id).filter(
@@ -173,17 +183,20 @@ def edit_quote(quote_id):
         return redirect(url_for('admin.quotes'))
 
     if request.method == 'POST':
-        quote.text = request.form.get('text', '').strip()
-        quote.author = request.form.get('author', '').strip()
+        new_text = request.form.get('text', '').strip()
+        new_author = request.form.get('author', '').strip()
         tags_str = request.form.get('tags', '').strip()
 
-        if not quote.text:
+        if not new_text:
             flash(_('quote_text') + ' is required.', 'error')
             return render_template('admin/quote_form.html', quote=quote,
                                    form_data=request.form)
 
+        quote.text = new_text
+        quote.author = new_author
         _sync_tags(quote, tags_str)
         db.session.commit()
+        invalidate_stats_cache()
         flash(_('save') + ' OK', 'success')
         return redirect(url_for('admin.quotes'))
 
@@ -240,10 +253,14 @@ def add_tag():
         if existing:
             flash(_('tag_exists'), 'error')
         else:
-            db.session.add(Tag(name=name))
-            db.session.commit()
-            invalidate_stats_cache()
-            flash(_('save') + ' OK', 'success')
+            try:
+                db.session.add(Tag(name=name))
+                db.session.commit()
+                invalidate_stats_cache()
+                flash(_('save') + ' OK', 'success')
+            except IntegrityError:
+                db.session.rollback()
+                flash(_('tag_exists'), 'error')
     return redirect(url_for('admin.tags_list'))
 
 
@@ -269,9 +286,10 @@ def settings():
                 qpp = max(5, min(qpp, 100))
             except (ValueError, TypeError):
                 qpp = 20
-            set_setting('quotes_per_page', str(qpp))
+            set_setting('quotes_per_page', str(qpp), commit=False)
             site_name = request.form.get('site_name', 'Zitatdatenbank').strip()[:100]
-            set_setting('site_name', site_name or 'Zitatdatenbank')
+            set_setting('site_name', site_name or 'Zitatdatenbank', commit=False)
+            db.session.commit()
             invalidate_stats_cache()
             flash(_('settings_saved'), 'success')
 
@@ -279,7 +297,7 @@ def settings():
             theme_name = request.form.get('theme_name', DEFAULT_THEME)
             previous_theme = get_setting('theme_name', DEFAULT_THEME)
             if theme_name in THEMES or theme_name == 'custom':
-                set_setting('theme_name', theme_name)
+                set_setting('theme_name', theme_name, commit=False)
                 theme_changed = theme_name != previous_theme
                 if theme_changed and theme_name in THEMES:
                     stale = Setting.query.filter(
@@ -287,24 +305,22 @@ def settings():
                     ).all()
                     for row in stale:
                         db.session.delete(row)
-                    if stale:
-                        db.session.commit()
                 if theme_name == 'custom':
                     for key in COLOR_KEYS:
                         val = request.form.get(key, '').strip()
                         if val and re.match(r'^#[0-9a-fA-F]{6}$', val):
-                            set_setting(f'custom_{key}', val)
+                            set_setting(f'custom_{key}', val, commit=False)
                 elif theme_name in THEMES and not theme_changed:
                     defaults = THEMES[theme_name]
                     for key in ALL_THEME_KEYS:
                         val = request.form.get(key, '').strip()
                         if val and val != defaults.get(key, ''):
-                            set_setting(f'theme_{theme_name}_{key}', val)
+                            set_setting(f'theme_{theme_name}_{key}', val, commit=False)
                         elif val == defaults.get(key, ''):
                             s = db.session.get(Setting, f'theme_{theme_name}_{key}')
                             if s:
                                 db.session.delete(s)
-                                db.session.commit()
+                db.session.commit()
             invalidate_stats_cache()
             flash(_('settings_saved'), 'success')
 

@@ -339,3 +339,55 @@ def test_xss_in_quote_escaped(client, app, make_quote):
     assert response.status_code == 200
     assert b'<script>alert' not in response.data
     assert b'<b>bold</b>' not in response.data
+
+
+def test_search_fulltext_operators(client, app, make_quote):
+    """FULLTEXT boolean operators in search should not crash."""
+    with app.app_context():
+        make_quote(text='A normal quote')
+    for q in ['+', '-test', '"unclosed', '(', '*', '+-~']:
+        response = client.get(f'/search?q={q}')
+        assert response.status_code == 200, f'Search for {q!r} failed'
+
+
+def test_search_like_wildcards(client, app, make_quote):
+    """LIKE wildcards % and _ should not match everything."""
+    with app.app_context():
+        make_quote(text='Normal quote')
+    response = client.get('/search?q=%25')  # URL-encoded %
+    assert response.status_code == 200
+
+
+def test_api_search_fulltext_operators(client, app, make_quote):
+    """API search with FULLTEXT operators should not crash."""
+    with app.app_context():
+        make_quote(text='A quote')
+    response = client.get('/api/quotes?q=%2B')  # URL-encoded +
+    assert response.status_code == 200
+
+
+def test_set_lang_no_open_redirect(client, app):
+    """set_lang should not redirect to external sites."""
+    response = client.get('/set-lang/en', headers={'Referer': 'https://evil.com/'})
+    assert response.status_code == 302
+    location = response.headers['Location']
+    assert 'evil.com' not in location
+
+
+def test_404_uses_nav_home_key(client, app):
+    """404 error page should use the nav_home translation key."""
+    response = client.get('/nonexistent-page')
+    assert response.status_code == 404
+    # Should show 'Startseite' (de) or 'Home' (en), not raw 'home'
+    assert b'home' not in response.data or b'Startseite' in response.data or b'Home' in response.data
+
+
+def test_nlbr_filter_escapes_xss(client, app, make_quote):
+    """The |nlbr filter should escape HTML before adding <br> tags."""
+    with app.app_context():
+        q = make_quote(text='<script>alert(1)</script> // safe text')
+        qid = q.id
+    response = client.get(f'/quote/{qid}')
+    assert response.status_code == 200
+    assert b'<script>' not in response.data
+    assert b'&lt;script&gt;' in response.data

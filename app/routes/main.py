@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import os
+import re
+from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from sqlalchemy import func, or_
@@ -12,6 +13,16 @@ from helpers import _, get_setting, get_cached_stat, get_cached_result, FastPagi
 from config import QUOTES_PER_PAGE
 
 main_bp = Blueprint('main', __name__)
+
+
+def _escape_like(q: str) -> str:
+    """Escape LIKE metacharacters so % and _ are matched literally."""
+    return q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+
+def _sanitize_fulltext(q: str) -> str:
+    """Strip FULLTEXT boolean-mode operators to prevent query syntax errors."""
+    return re.sub(r'[+\-~*"@<>()]+', ' ', q).strip()
 
 
 def _random_quote():
@@ -209,7 +220,7 @@ def search():
     if not q:
         return render_template('search_results.html', quotes=[], pagination=None, query='')
 
-    like_pattern = f'%{q}%'
+    like_pattern = f'%{_escape_like(q)}%'
 
     # Find matching tag IDs from cache (microseconds vs SQL ILIKE scan)
     def _load_tag_map():
@@ -231,8 +242,11 @@ def search():
     if db.engine.dialect.name == 'sqlite':
         conditions = [Quote.text.ilike(like_pattern), Quote.author.ilike(like_pattern)]
     else:
-        # Use FULLTEXT indexes for both text and author
-        conditions = [Quote.text.match(q), Quote.author.match(q)]
+        ft_q = _sanitize_fulltext(q)
+        if ft_q:
+            conditions = [Quote.text.match(ft_q), Quote.author.match(ft_q)]
+        else:
+            conditions = [Quote.text.ilike(like_pattern), Quote.author.ilike(like_pattern)]
 
     if tag_filter is not None:
         conditions.append(tag_filter)
@@ -308,11 +322,17 @@ def api_quotes():
     if tag:
         query = query.filter(Quote.tags.any(Tag.name == tag))
     if q:
+        like_pat = f'%{_escape_like(q)}%'
         if db.engine.dialect.name == 'sqlite':
             query = query.filter(
-                or_(Quote.text.ilike(f'%{q}%'), Quote.author.ilike(f'%{q}%')))
+                or_(Quote.text.ilike(like_pat), Quote.author.ilike(like_pat)))
         else:
-            query = query.filter(or_(Quote.text.match(q), Quote.author.match(q)))
+            ft_q = _sanitize_fulltext(q)
+            if ft_q:
+                query = query.filter(or_(Quote.text.match(ft_q), Quote.author.match(ft_q)))
+            else:
+                query = query.filter(
+                    or_(Quote.text.ilike(like_pat), Quote.author.ilike(like_pat)))
 
     query = query.order_by(Quote.id.desc())
 
@@ -321,7 +341,7 @@ def api_quotes():
     items = items[:per_page]
 
     return jsonify({
-        'quotes': [_quote_to_dict(q) for q in items],
+        'quotes': [_quote_to_dict(row) for row in items],
         'page': page,
         'per_page': per_page,
         'has_next': has_more,
@@ -364,4 +384,7 @@ def health():
 def set_lang(lang):
     if lang in ('de', 'en'):
         session['lang'] = lang
-    return redirect(request.referrer or url_for('main.index'))
+    ref = request.referrer
+    if ref and urlparse(ref).netloc not in ('', request.host):
+        ref = None
+    return redirect(ref or url_for('main.index'))

@@ -7,6 +7,8 @@ import time
 from datetime import datetime, timedelta
 
 import click
+from urllib.parse import urlparse
+
 from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify, render_template
 from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash
@@ -67,6 +69,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+if os.environ.get('FLASK_TESTING') != '1':
+    app.config['SESSION_COOKIE_SECURE'] = True
 
 db.init_app(app)
 migrate.init_app(app, db)
@@ -120,7 +124,10 @@ def ratelimit_handler(e):
     if request.is_json or request.path.startswith('/api/'):
         return jsonify({'status': 'error', 'detail': str(e.description)}), 429
     flash('Too many requests. Please wait and try again.', 'error')
-    return redirect(request.referrer or url_for('main.index'))
+    ref = request.referrer
+    if ref and urlparse(ref).netloc not in ('', request.host):
+        ref = None
+    return redirect(ref or url_for('main.index'))
 
 
 @app.context_processor
