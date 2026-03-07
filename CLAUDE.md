@@ -42,7 +42,7 @@ docker compose build && docker compose up -d
 - `app/templates/` - Jinja2 templates (tags.html, credits.html, admin/tags.html)
 - `app/static/css/animations.css` - Animated theme styles, typing cursor, particle containers
 - `app/templates/errors/` - Custom 404/500 error pages
-- `tests/` - pytest test suite (264 tests)
+- `tests/` - pytest test suite (269 tests)
 
 ## CLI Commands
 - `flask import-quotes <path>` - Import quotes from SQL dump
