@@ -1007,9 +1007,9 @@ def run_full_cleanup() -> dict[str, int]:
     """Run all cleanup steps on the quote database. Returns a stats dict."""
     stats: Counter = Counter()
 
-    # --- Text cleanup (all quotes) ---
-    all_quotes = Quote.query.all()
-    stats['total_quotes'] = len(all_quotes)
+    # --- Text cleanup (all quotes, batched to limit memory) ---
+    stats['total_quotes'] = db.session.query(db.func.count(Quote.id)).scalar() or 0
+    all_quotes = Quote.query.yield_per(1000).all()
 
     for i, quote in enumerate(all_quotes):
         # Text cleanup
@@ -1055,7 +1055,7 @@ def run_full_cleanup() -> dict[str, int]:
     logger.info('Text/author/category cleanup done: %s', dict(stats))
 
     # --- Post-processing: context-dependent fixes (need category info) ---
-    all_quotes = Quote.query.all()
+    all_quotes = Quote.query.yield_per(1000).all()
     for i, quote in enumerate(all_quotes):
         author = (quote.author or '').strip()
         cat = (quote.category or '').strip()
@@ -1106,44 +1106,133 @@ def run_full_cleanup() -> dict[str, int]:
                 if k in ('brand_to_werbespruch', 'truncated_firstname_cleared', 'author_category_swapped')})
 
     # --- Dedup: exact text duplicates ---
-    text_groups = (
-        db.session.query(Quote.text, db.func.count(Quote.id), db.func.min(Quote.id))
-        .group_by(Quote.text)
-        .having(db.func.count(Quote.id) > 1)
-        .all()
-    )
-    for text_val, count, min_id in text_groups:
-        dupes = Quote.query.filter(Quote.text == text_val, Quote.id != min_id).all()
-        for dupe in dupes:
-            db.session.delete(dupe)
-            stats['duplicates_deleted'] += 1
+    # Strategy: add a persistent text_hash column (CRC32) with an index, then group by hash.
+    # This avoids full-table scan on TEXT column.
+    from models import quote_tags as quote_tags_table
+    if db.engine.dialect.name == 'sqlite':
+        text_groups = (
+            db.session.query(db.func.min(Quote.id), db.func.count(Quote.id))
+            .group_by(Quote.text)
+            .having(db.func.count(Quote.id) > 1)
+            .all()
+        )
+        keep_ids = {min_id for min_id, cnt in text_groups}
+        if keep_ids:
+            for min_id in keep_ids:
+                quote = db.session.get(Quote, min_id)
+                if quote:
+                    dupe_ids = [d.id for d in db.session.query(Quote.id).filter(
+                        Quote.text == quote.text, Quote.id != min_id).all()]
+                    if dupe_ids:
+                        db.session.execute(
+                            quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(dupe_ids))
+                        )
+                        Quote.query.filter(Quote.id.in_(dupe_ids)).delete(synchronize_session=False)
+                        stats['duplicates_deleted'] += len(dupe_ids)
+    else:
+        # MariaDB: use a temporary hash column with index for fast grouping
+        # Step 1: Add text_hash column if not exists
+        try:
+            db.session.execute(db.text(
+                'ALTER TABLE quote ADD COLUMN text_hash INT UNSIGNED NULL'
+            ))
+            db.session.commit()
+            logger.info('Added text_hash column')
+        except Exception:
+            db.session.rollback()  # column already exists
+
+        # Step 2: Populate hash column in batches
+        db.session.execute(db.text(
+            'UPDATE quote SET text_hash = CRC32(text) WHERE text_hash IS NULL'
+        ))
+        db.session.commit()
+        logger.info('Populated text_hash column')
+
+        # Step 3: Add index if not exists
+        try:
+            db.session.execute(db.text(
+                'ALTER TABLE quote ADD INDEX idx_text_hash (text_hash)'
+            ))
+            db.session.commit()
+            logger.info('Added text_hash index')
+        except Exception:
+            db.session.rollback()  # index already exists
+
+        # Step 4: Find duplicate hash groups (fast with index)
+        hash_groups = db.session.execute(db.text(
+            'SELECT text_hash, COUNT(*) as cnt FROM quote '
+            'GROUP BY text_hash HAVING cnt > 1'
+        )).fetchall()
+        logger.info('Found %d hash groups with potential duplicates', len(hash_groups))
+
+        for text_hash, cnt in hash_groups:
+            # Get all IDs with this hash, ordered by ID
+            rows = db.session.execute(db.text(
+                'SELECT id FROM quote WHERE text_hash = :h ORDER BY id'
+            ), {'h': text_hash}).fetchall()
+            if len(rows) < 2:
+                continue
+            # Group by exact text within this hash bucket
+            ids = [r[0] for r in rows]
+            seen_texts: dict[str, int] = {}  # text -> keep_id
+            dupe_ids = []
+            for qid in ids:
+                quote = db.session.get(Quote, qid)
+                if not quote:
+                    continue
+                if quote.text in seen_texts:
+                    dupe_ids.append(qid)
+                    stats['duplicates_deleted'] += 1
+                else:
+                    seen_texts[quote.text] = qid
+            if dupe_ids:
+                # Delete quote_tags entries first, then quotes
+                db.session.execute(
+                    quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(dupe_ids))
+                )
+                Quote.query.filter(Quote.id.in_(dupe_ids)).delete(synchronize_session=False)
 
     db.session.flush()
     logger.info('Dedup done: %d duplicates deleted', stats['duplicates_deleted'])
 
     # --- Non-Latin author quotes: delete entirely ---
     # Quotes with Arabic, CJK, Cyrillic etc. authors are from malformed CSV imports
-    all_quotes = Quote.query.all()
-    for quote in all_quotes:
-        author = (quote.author or '').strip()
-        if author and _has_non_latin_chars(author):
-            db.session.delete(quote)
-            stats['non_latin_deleted'] += 1
-    db.session.flush()
-    if stats['non_latin_deleted']:
+    # Only scan distinct authors to find non-Latin ones, then bulk-delete by author
+    # Must delete quote_tags first due to FK constraint
+    distinct_authors = db.session.query(Quote.author).filter(
+        Quote.author != '', Quote.author.isnot(None)
+    ).distinct().all()
+    non_latin_authors = [a[0] for a in distinct_authors if _has_non_latin_chars(a[0])]
+    if non_latin_authors:
+        for batch_start in range(0, len(non_latin_authors), 100):
+            batch = non_latin_authors[batch_start:batch_start + 100]
+            # Get IDs of quotes to delete
+            ids_to_delete = [q.id for q in
+                             db.session.query(Quote.id).filter(Quote.author.in_(batch)).all()]
+            if ids_to_delete:
+                # Delete quote_tags entries first, then quotes
+                db.session.execute(
+                    quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(ids_to_delete))
+                )
+                count = Quote.query.filter(Quote.id.in_(ids_to_delete)).delete(synchronize_session=False)
+                stats['non_latin_deleted'] += count
+        db.session.flush()
         logger.info('Deleted %d quotes with non-Latin authors', stats['non_latin_deleted'])
 
     # --- Garbage quotes: empty or placeholder text ---
-    garbage = Quote.query.filter(
+    garbage_ids = [q.id for q in db.session.query(Quote.id).filter(
         db.or_(
             Quote.text == '',
             Quote.text.is_(None),
             db.func.length(db.func.trim(Quote.text)) == 0,
         )
-    ).all()
-    for g_quote in garbage:
-        db.session.delete(g_quote)
-        stats['garbage_deleted'] += 1
+    ).all()]
+    if garbage_ids:
+        db.session.execute(
+            quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(garbage_ids))
+        )
+        Quote.query.filter(Quote.id.in_(garbage_ids)).delete(synchronize_session=False)
+        stats['garbage_deleted'] += len(garbage_ids)
 
     db.session.commit()
     logger.info('Cleanup complete: %s', dict(stats))
