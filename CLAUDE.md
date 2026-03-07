@@ -41,7 +41,7 @@ docker compose build && docker compose up -d
 - `app/templates/` - Jinja2 templates
 - `app/static/css/animations.css` - Animated theme styles, typing cursor, particle containers
 - `app/cleanup_service.py` - Quote data cleanup (wiki markup, truncated authors, dedup)
-- `tests/` - pytest test suite (123 tests)
+- `tests/` - pytest test suite (219 tests)
 
 ## CLI Commands
 - `flask import-quotes <path>` - Import quotes from SQL dump
@@ -58,6 +58,6 @@ docker compose build && docker compose up -d
 - Typing animation on animated themes processes all `.quote-text` elements, handles `<br>` nodes
 - Auth: Flask-Login with AdminUser model, env var auto-creation
 - Auto-import: Quotes imported on first startup if table is empty
-- Auto-cleanup: Versioned (CLEANUP_VERSION in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Fixes wiki markup, truncated Sprichwort/Werbespruch authors, "Aus Country" → "Sprichwort aus Country", garbage authors (numeric/single-char/fragments), truncated parentheticals, deduplicates quotes
+- Auto-cleanup: Versioned (CLEANUP_VERSION=16 in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Fixes wiki markup, truncated Sprichwort/Werbespruch authors, "Aus Country" → "Sprichwort aus Country", garbage authors (numeric/single-char/fragments), truncated parentheticals, encoding fixes, Bible/source book references, disambiguation pages, work/film titles, company names, deduplicates quotes
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
 - Tests: SQLite in-memory, CSRF disabled, session-scoped app fixture

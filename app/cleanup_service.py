@@ -10,7 +10,7 @@ from models import Quote
 logger = logging.getLogger(__name__)
 
 # Current cleanup version — bump to re-run on existing installs.
-CLEANUP_VERSION = 4
+CLEANUP_VERSION = 16
 
 # Map truncated "X Sprichw" -> full "X Sprichwort" with correct gender.
 # The original VARCHAR(255) truncated these nationality-proverb labels.
@@ -141,6 +141,93 @@ AUS_COUNTRY_MAP = {
     'Aus Venedig': 'Sprichwort aus Venedig',
 }
 
+# Known legitimate single-name authors (historical figures, artists, etc.)
+KNOWN_SINGLE_NAMES = {
+    'Äsop', 'Ovid', 'Homer', 'Horaz', 'Lenin', 'Plato', 'Saadi',
+    'Solon', 'Sunzi', 'Hafes', 'Falco', 'Sting', 'Smudo', 'Jesus',
+    'Lukan', 'Galen', 'Wols', 'Thot', 'Curse', 'Torch', 'Alain',
+    'Bibel', 'Koran',
+}
+
+# Known real names that end in patterns that look truncated but aren't.
+# Chinese/Asian names, abbreviations, etc.
+REAL_SHORT_ENDINGS = {
+    'Lü Bu We', 'Meng Zi', 'Johann Peter Uz', 'Malcolm X', 'Pius X',
+    'Franz Joseph I', 'Friedrich Wilhelm I', 'Xerxes I',
+}
+
+# Source/reference works: "WorkName Section" → move to category
+SOURCE_BOOKS = {
+    # Bible books
+    'Apostelgeschichte', 'Brief an die Römer', 'Deuteronomium',
+    'Epheser', 'Galater', 'Genesis', 'Habakuk', 'Hebräer',
+    'Hebräerbrief', 'Hesekiel', 'Hiob', 'Hohelied Salomos',
+    'Hoheslied', 'Hosea', 'Jakobus', 'Jeremia', 'Jesaja',
+    'Jesus Sirach', 'Johannes', 'Judas', 'Kolosser',
+    'Leviticus', 'Levitikus', 'Lukas', 'Markus', 'Matthäus',
+    'Micha', 'Obadja', 'Offenbarung', 'Offbarung',
+    'Offenbarung des Johannes', 'Philipperbrief',
+    'Prediger', 'Prediger Salomo', 'Psalm', 'Psalme',
+    'Römer', 'Römerbrief', 'Sprüche', 'Sprüche Salomons',
+    'Sprüche Salomos', 'Tobit', 'Zefanja',
+    # Classical/literary works with section references
+    'Agricola', 'Ars poetica', 'Bescheidenheit',
+    'Blütenstaub', 'Blüthenstaub', 'Brutus',
+    'Bücher der Geschichte', 'Carmen saeculare', 'Carmina',
+    'Diodor', 'Elegiarum liber', 'Elegien Buch', 'Epistulae',
+    'Essai sur les Moeurs', 'Fragment', 'Gargantua',
+    'Gesammelte Irrtümer', 'Gorgias', 'Historien',
+    'Lohn der Wahrheit', 'Metaphysik', 'Metaphysik I',
+    'Phaidon', 'Phormio', 'Phädrus', 'Politik',
+    'Pro Roscio', 'Vita Augusti', 'Vita Tiberi',
+    'Vita divi Claudi',
+}
+
+# Encoding fixes: ? replacing non-ASCII characters in original data
+ENCODING_FIXES = {
+    'Czes?aw Mi?osz': 'Czesław Miłosz',
+    'Karel ?apek': 'Karel Čapek',
+    'Lech Wa??sa': 'Lech Wałęsa',
+    'Matsuo Bash?': 'Matsuo Bashō',
+    'Stanis?aw Jerzy Lec': 'Stanisław Jerzy Lec',
+    'Stanis?aw Lem': 'Stanisław Lem',
+    'Tayyip Erdo?an': 'Tayyip Erdoğan',
+    'Mustafa Ceri?': 'Mustafa Cerić',
+    'Paula von Preradovi?': 'Paula von Preradović',
+    'Wies?aw Brudzi?ski': 'Wiesław Brudziński',
+    'Yagy? Munenori': 'Yagyū Munenori',
+    'Konstanty Ildefons Ga?czy?ski': 'Konstanty Ildefons Gałczyński',
+    'Leszek Ko?akowski': 'Leszek Kołakowski',
+    'Dscha?far as-S?diq': 'Dschaʿfar as-Sādiq',
+    'Mahm?d Ahmad?-Ne': 'Mahmud Ahmadinedschad',
+    'Johannes_XXIII': 'Johannes XXIII.',
+}
+
+# Wikiquote disambiguation page descriptors
+DISAMBIGUATION_PAGE_TYPES = {
+    'Film', 'Fernsehserie', 'Dokumentarfilm',
+    'Pflanze', 'Tier', 'Gestein', 'Gesteinssediment',
+    'Farbe', 'Philosophie', 'Stadt', 'Raum',
+    'Schokoriegel', 'Leuchtmittel', 'Schwarzer',
+    'Zeitung', 'politische Gesinnung', 'Wetter',
+}
+
+# Known multi-word film/show/work titles not starting with articles
+KNOWN_WORK_TITLES = {
+    'Babylon 5', 'Es war einmal in Amerika',
+    'Fear and Loathing in Las Vegas', 'From Dusk Till Dawn',
+    'Ghost in the Shell', 'Ghost in the Shell 2: Innocence',
+    'Jagd auf Roter Oktober', 'Jenseits von Schuld und Sühne',
+    'Leben und sterben lassen', 'Mein Leben und ich',
+    'Mein Name ist Nobody', 'My Big Fat Greek Summer',
+    'My Big Fat Greek Wedding', 'Nur noch 60 Sekunden',
+    'Per Anhalter durch die Galaxis', 'Reise ans Ende der Nacht',
+    'Serengeti darf nicht sterben', 'Spiel mir das Lied vom Tod',
+    'Stadien auf des Lebens Weg', 'Stargate SG1',
+    'Stirb an einem anderen Tag', 'Terminator 2', 'Terminator 3',
+    'Wem die Stunde schl',
+}
+
 
 def _extract_author_from_text(text: str) -> str:
     """Try to extract author from quote text (after ' - ')."""
@@ -157,9 +244,75 @@ def _extract_author_from_text(text: str) -> str:
 
 
 def _try_extract_author(text: str) -> str:
-    """Extract author from text, returning '' if the result is garbage."""
+    """Extract author from text, returning '' if the result is garbage or a work title."""
     extracted = _extract_author_from_text(text)
-    if extracted and _is_garbage_author(extracted):
+    if not extracted:
+        return ''
+    if _is_garbage_author(extracted):
+        return ''
+    if _is_work_title(extracted):
+        return ''
+    # Reject all-caps names (brand names, publications like "DEUTSCHE BA")
+    if extracted.isupper():
+        return ''
+    # Reject names containing wiki markup
+    if '[[' in extracted or ']]' in extracted:
+        return ''
+    # Reject very long extractions (source references, not person names)
+    if len(extracted) > 60:
+        return ''
+    # Reject extractions ending in "Nr" (magazine references)
+    if extracted.endswith(' Nr'):
+        return ''
+    # Reject names starting with '(' (parenthetical references)
+    if extracted.startswith('('):
+        return ''
+    # Reject doubled/corrupted entries
+    if re.search(r'(.{4,})\1', extracted):
+        return ''
+    # Reject fragment authors starting with punctuation
+    if extracted[0] in ',;.!?':
+        return ''
+    # Reject "vgl" references
+    if 'vgl' in extracted.lower():
+        return ''
+    # Reject "nach ..." phrases (not person names)
+    if extracted.startswith('nach '):
+        return ''
+    # Reject descriptive phrases starting with "Über"
+    if extracted.startswith('Über '):
+        return ''
+    # Reject source book references (Bible verses, classical work sections)
+    m_src = re.match(r'^(.+?)\s+§?\s*(\d[\da-z.,+/-]*)$', extracted)
+    if m_src:
+        book = re.sub(r'\s*\([^)]+\)', '', m_src.group(1)).strip()
+        if book in SOURCE_BOOKS:
+            return ''
+    # Reject " / " patterns (play/dialogue references)
+    if ' / ' in extracted:
+        return ''
+    # Reject titles with '!'
+    if '!' in extracted:
+        return ''
+    # Reject "Werbespruch für ..." (descriptive, not a name)
+    if extracted.startswith('Werbespruch für') or extracted.startswith('Werbespruch von'):
+        return ''
+    # Reject brand names / company names (contain uppercase acronyms 2+ chars)
+    # Pattern: word with 2+ consecutive uppercase letters not at start of a normal name
+    if re.search(r'\b[A-Z]{2,}', extracted):
+        return ''
+    # Apply same cleanup that _clean_author would do:
+    # Strip truncated parenthetical endings
+    if '(' in extracted and ')' not in extracted:
+        extracted = re.sub(r'\s*\(.*$', '', extracted).strip()
+        if not extracted:
+            return ''
+    # Strip truncated name endings
+    cleaned = _strip_truncated_name_ending(extracted)
+    if cleaned != extracted:
+        extracted = cleaned
+    # Reject single short words (3-5 chars) unless known figure — likely truncated first names
+    if ' ' not in extracted and len(extracted) <= 5 and extracted not in KNOWN_SINGLE_NAMES:
         return ''
     return extracted
 
@@ -179,7 +332,6 @@ def _clean_text(text: str) -> str:
 def _fix_double_corruption(value: str) -> str:
     """Fix Sprichwortort -> Sprichwort (caused by v1 double-replacement bug)."""
     if 'Sprichwortört' in value:
-        # Sprichwortörter -> Sprichwörter (plural with umlaut)
         value = value.replace('Sprichwortört', 'Sprichwört')
     if 'Sprichwortort' in value:
         value = value.replace('Sprichwortort', 'Sprichwort')
@@ -201,6 +353,8 @@ def _complete_sprichw(value: str) -> str:
 
 def _strip_wiki_markup(value: str) -> str:
     """Remove wiki markup from a string."""
+    # Remove :w: prefix wiki links
+    value = re.sub(r':w:', '', value)
     # Remove [[...]] wiki links, keeping display text
     value = re.sub(r'\[\[(?:[^|\]]*\|)?([^\]]*)\]\]', r'\1', value)
     # Remove [[ and ]] remnants (truncated links)
@@ -209,6 +363,8 @@ def _strip_wiki_markup(value: str) -> str:
     value = value.replace("''''", '').replace("''", '')
     # Remove backtick/accent marks used as wiki formatting
     value = value.replace('`', '').replace('´', '')
+    # Remove leading/trailing „" quotation marks
+    value = value.strip('„"')
     # Remove trailing lone single quote (wiki remnant)
     value = value.strip()
     if value.endswith("'") and not value.endswith("''"):
@@ -227,18 +383,254 @@ def _is_garbage_author(author: str) -> bool:
     # Single character
     if len(author) <= 1:
         return True
-    # Two-char fragments (except known abbreviations)
-    if len(author) == 2 and author not in ('AT', 'SZ'):
+    # Two-char fragments
+    if len(author) == 2:
         return True
-    # Known truncated fragments
+    # Known truncated fragments and non-person authors
     if author in ('Im', 'in', 'Zu', 'aus', 'und', 'Pap', 'Rep', 'Zit',
                    'Das M', 'Der K', 'In C', 'In t', 'Pro L', 'Joe E',
-                   'Phil', 'Prof', 'orig', 'Hallo'):
+                   'Phil', 'Prof', 'orig', 'Hallo', 'Das Sch', 'Das Unm',
+                   'Der gro', 'Mein F',
+                   'AT', 'SZ', 'DKV', 'ORF', 'Bild', 'Stern', 'Milka', 'Krug',
+                   'In: E', 'Juli'):
         return True
     # Starts with 'am ' + digit (truncated date reference)
     if re.match(r'^am \d', author):
         return True
+    # Starts with lowercase (fragment, not a proper name) except known patterns
+    if author[0].islower() and not author.startswith(('nach ', 'von ')):
+        return True
+    # Descriptive phrases that aren't person names
+    if re.match(r'^(?:Dieser|Dieses|Rede |Volksmund|Lautsprecherdurchsage|Megaphondurchsage'
+                 r'|Titel |Urteil |Während |Fragen zur '
+                 r'|Anfang |Ende |Mitte |Sommer |Winter |Herbst |Frühjahr '
+                 r'|Januar |Februar |März |April |Mai |Juni |Juli |August '
+                 r'|September |Oktober |November |Dezember )', author):
+        return True
     return False
+
+
+def _is_work_title(author: str) -> bool:
+    """Check if the author field is actually a work/film/book title, not a person."""
+    # Starts with digit (film/work titles like "00 Schneider", "12 Monkeys", "2001:")
+    if author[0].isdigit():
+        return True
+    # Contains '!' (titles/shows, not person names)
+    if '!' in author:
+        return True
+    # Starts with "Im " (German "in dem" contraction)
+    if author.startswith('Im '):
+        return True
+    # Known multi-word titles
+    if author in KNOWN_WORK_TITLES:
+        return True
+    # "Kapitel N" (chapter references)
+    if re.match(r'^Kapitel \d', author):
+        return True
+    # German articles + common work-title patterns
+    # These are wikiquote page names for works, not people
+    if re.match(r'^(?:Das|Der|Die|Ein|Eine) ', author):
+        # Exclude "Der/Die/Das" + person name patterns (rare but possible)
+        # Person names after articles: "Der Alte Fritz" -> not a person in our data
+        # All of these in our data are work/concept titles
+        return True
+    # English article titles
+    if re.match(r'^(?:A |The )', author):
+        return True
+    # Latin work titles: "De SOMETHING", "Ad SOMETHING" (lowercase after)
+    if re.match(r'^(?:De |Ad |In |Ex |Pro )[a-z]', author):
+        return True
+    # Religious/literary source texts (not person names)
+    # Note: Ilias, Aias, Werke are handled in post-processing (need category swap)
+    if author in ('Bibel', 'Koran', 'Yvain'):
+        return True
+    # Known work titles without articles
+    if re.match(r'^(?:Briefe|Annalen|Andria|Episteln|Eklogen|Moralia|Satiren|Fragmente'
+                 r'|Nikomachische Ethik|Accattone|American History'
+                 r'|Dragonball|Rambo|Blues Brothers|Star Wars'
+                 r'|Laelius de amicitia|Orator ad|Quintilian|Tusculanae'
+                 r'|Liebesgedichte|Liebeskunst'
+                 r'|Frühling und Herbst'
+                 r'|In Catilinam'
+                 r'|Remedia Amoris|Paradoxa Stoicorum|Cato Maior'
+                 r'|Hectors Reise|Star Trek'
+                 r'|Glauben und Liebe|Geschichte von'
+                 r'|Grundgesetz der'
+                 r'|Réflexions ou sentences'
+                 r'|Interview (?:im|in |mit ))', author):
+        return True
+    # "X oder Y" pattern (work titles with alternatives)
+    if ' oder ' in author and not _looks_like_person_name(author.split(' oder ')[0].strip()):
+        return True
+    return False
+
+
+def _extract_name_from_source_ref(author: str) -> str:
+    """Extract person name from a source reference like 'Name in der Zeitung' or 'Name YYYY in...'."""
+    # "Name YYYY in ..." or "Name (YYYY) in ..."
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:\(?\d{4}\)?\s+)?(?:in |bei |im |zur |auf |am |vom |zu )'
+                 r'(?:der|dem|die|einer|einem|den|seinem|ihrem|seiner|ihrer|diesem|dieser'
+                 r'|einem |einer |Bezug|einem|der |dem |die '
+                 r'|Interview|Gespräch|Ansprache|Sendung|Pressemitteilung|Antwort|Brief'
+                 r'|Bundestagsdebatte|Entgegennahme|Verleihung|Zusammenhang'
+                 r'|Fernsehduell|Presseko|Situation|Zukunft)', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        # Must look like a person name (at least 2 words, not too long)
+        if ' ' in candidate and len(candidate) < 60 and _looks_like_person_name(candidate):
+            return candidate
+    # "Name nach EVENT" (person reacting to event, not "nach Name")
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+nach\s+(?:der|dem|einem|einer|seinem|seiner|seinem)\b', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if ' ' in candidate and _looks_like_person_name(candidate):
+            return candidate
+    # "Name anlässlich/als/gemäß/laut ..."
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:anlässlich|als |gemäß |laut )', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if ' ' in candidate and _looks_like_person_name(candidate):
+            return candidate
+    # "Name - context" (dash separator)
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+-\s+', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if ' ' in candidate and _looks_like_person_name(candidate):
+            return candidate
+    # "Name zitiert in/von ..."
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:\(\d{4}\)\s+)?zitiert\s+(?:in|von|bei)\b', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if ' ' in candidate and _looks_like_person_name(candidate):
+            return candidate
+    # "Name aus Work" (person + their work)
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+aus\s+(?:[A-ZÄÖÜ]|Sämtliche|Gedanken|Rime|nuvens)', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if ' ' in candidate and _looks_like_person_name(candidate):
+            return candidate
+    # "Name am/vom/zum N" (truncated date reference) → extract name
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:am|vom|zum)\s+\d', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if _looks_like_person_name(candidate):
+            return candidate
+    # "Name YYYY preposition$" (truncated source reference ending in dangling preposition)
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+\d{4}\s+(?:in|im|bei|auf|am|vom|zu|während)$', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if _looks_like_person_name(candidate):
+            return candidate
+    # "Name YYYY" at the end (year reference without further context)
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+\(?\d{4}\)?$', author)
+    if m:
+        candidate = m.group(1).strip().rstrip(',')
+        if _looks_like_person_name(candidate):
+            return candidate
+    return ''
+
+
+def _extract_name_from_uber(author: str) -> str:
+    """Extract person name from 'Name über TOPIC' pattern."""
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+über\s+', author)
+    if m:
+        candidate = m.group(1).strip()
+        if _looks_like_person_name(candidate):
+            return candidate
+    return ''
+
+
+def _looks_like_person_name(value: str) -> bool:
+    """Heuristic: does this look like a person's name?"""
+    if not value or len(value) < 3:
+        return False
+    # Must start with uppercase
+    if not value[0].isupper():
+        return False
+    # Must not start with articles or descriptive prefixes (those are titles/descriptions)
+    if re.match(r'^(?:Das |Der |Die |Ein |Eine |A |The |Über |Im |Aus )', value):
+        return False
+    # Must not be all-caps (acronyms)
+    if value.isupper():
+        return False
+    # Should have at least first + last name, OR be a known single-name author
+    words = value.split()
+    if len(words) < 2:
+        # Single-word names are suspicious but allowed for historical figures
+        return len(value) > 3
+    # Check that most words start with uppercase (name parts)
+    upper_words = sum(1 for w in words if w[0].isupper() or w in ('von', 'van', 'de', 'der', 'den', 'di', 'du', 'i', 'e', 'und'))
+    return upper_words >= len(words) * 0.6
+
+
+def _strip_truncated_name_ending(author: str) -> str:
+    """Strip truncated 1-2 char endings from person names due to VARCHAR(255) truncation.
+
+    E.g. 'Georg B' -> 'Georg', 'Friedrich Fr' -> 'Friedrich'.
+    Only strips if it looks like a person name with a truncated last-name fragment.
+    """
+    if author in REAL_SHORT_ENDINGS:
+        return author
+
+    # Match: "Words... X" where X is 1-2 chars at end
+    m = re.match(r'^(.+?)\s+([A-ZÄÖÜ][a-zäöü]?)$', author)
+    if not m:
+        return author
+
+    prefix = m.group(1).strip()
+    fragment = m.group(2)
+
+    # Don't strip Roman numerals used as ordinals (Xerxes I, Friedrich Wilhelm I)
+    # Only protect I/V/X and multi-char numerals — D/C/L/M alone are almost certainly
+    # truncated surname initials in this dataset.
+    if fragment in ('I', 'V', 'X', 'II', 'IV', 'VI', 'IX', 'XI', 'XV', 'XX'):
+        return author
+
+    # Don't strip if prefix doesn't look like a person name
+    # Allow single first names (Joe, Don, Georg) and "Firstname von" patterns
+    if not _looks_like_person_name(prefix):
+        if not re.match(r'^[A-ZÄÖÜ][a-zäöü]+(?:\s+(?:von|van|de|der|di|die))?$', prefix):
+            return author
+
+    # The prefix (without the fragment) is the cleaned name
+    # For single first names, keep as-is (better than empty)
+    if len(prefix.split()) >= 1 and len(prefix) > 3:
+        return prefix
+
+    return author
+
+
+def _split_glued_name_title(author: str) -> str:
+    """Split names glued to work titles: 'NameTitle' -> 'Name'.
+
+    E.g. 'Abū l-Qāsem-e FerdousīDas Buch der Könige' -> 'Abū l-Qāsem-e Ferdousī'
+    E.g. 'Marie von Ebner-EschenbachAphorismen' -> 'Marie von Ebner-Eschenbach'
+    """
+    # Look for lowercase/special char followed immediately by uppercase (title start)
+    # But skip legitimate patterns like McBeal, MacGowan, LaVey, DeLillo etc.
+    m = re.search(r'([a-zäöüīā])([A-ZÄÖÜ][a-zäöü])', author)
+    if not m:
+        return author
+
+    pos = m.start() + 1  # position of the uppercase char
+    before = author[:pos]
+    after = author[pos:]
+
+    # Skip Mc/Mac/La/De/Di patterns
+    # Check if this is a legitimate camelCase name part
+    prefix_end = before[-2:] if len(before) >= 2 else before
+    if prefix_end in ('Mc', 'mc'):
+        return author
+    # Check 3-char patterns
+    prefix_3 = before[-3:] if len(before) >= 3 else ''
+    if prefix_3 in ('Mac', 'mac'):
+        return author
+
+    # Check if the part before looks like a name and the part after looks like a title
+    if len(before.strip()) > 3 and re.match(r'^[A-ZÄÖÜ]', after):
+        return before.strip()
+
+    return author
 
 
 def _clean_author(author: str, text: str) -> tuple[str, str | None]:
@@ -264,6 +656,11 @@ def _clean_author(author: str, text: str) -> tuple[str, str | None]:
     if not author:
         return (_try_extract_author(text), None)
 
+    # Fix encoding issues (? replacing non-ASCII chars, _ in names)
+    if '?' in author or '_' in author:
+        if author in ENCODING_FIXES:
+            author = ENCODING_FIXES[author]
+
     # Starts with '' (wiki bold prefix on name) - catch any remaining
     if author.startswith("'"):
         author = author.lstrip("'")
@@ -286,6 +683,17 @@ def _clean_author(author: str, text: str) -> tuple[str, str | None]:
     # Sprichw/Werbespr completion
     if 'Sprichw' in author or 'Werbespr' in author:
         return (_complete_sprichw(author), None)
+    # "Sprichwort der/des X" with truncated ending -> generic Sprichwort
+    if re.match(r'^Sprichwort (?:der|des|aus) [A-ZÄÖÜ][a-zäöü]?$', author):
+        return ('Sprichwort', None)
+
+    # Source/reference works with section numbers → move to category
+    # Matches "BookName N", "BookName § N", "BookName (Note) N"
+    m = re.match(r'^(.+?)\s+§?\s*(\d[\da-z.,+/-]*)$', author)
+    if m:
+        book = re.sub(r'\s*\([^)]+\)', '', m.group(1)).strip()
+        if book in SOURCE_BOOKS:
+            return ('', author)
 
     # Zitat des Tages/Archiv -> move to category, extract author from text
     if author.startswith('Zitat des Tages'):
@@ -297,45 +705,116 @@ def _clean_author(author: str, text: str) -> tuple[str, str | None]:
         return (m.group(1).strip(), None)
 
     # "Aus COUNTRY" -> convert to "Sprichwort aus COUNTRY"
-    # First try exact match in map
     if author in AUS_COUNTRY_MAP:
         return (AUS_COUNTRY_MAP[author], None)
-    # Handle "Aus Country (truncated..." - strip parenthetical, then match
     if re.match(r'^Aus [A-ZÄÖÜ]', author):
         base = re.sub(r'\s*\(.*$', '', author).strip()
         if base in AUS_COUNTRY_MAP:
             return (AUS_COUNTRY_MAP[base], None)
-        # "Aus Rußland und Aus Deutschland" -> just use generic
         if ' und ' in author:
             return ('Sprichwort', None)
-        # "Aus Deutschland(Name)" -> extract name
         m = re.match(r'^Aus \w+\((.+?)\)$', author)
         if m:
             return (m.group(1).strip(), None)
-        # Remaining "Aus X" -> generic sprichwort
         return ('Sprichwort aus ' + base.replace('Aus ', ''), None)
-    # "aus ..." lowercase (fragment references, not country origins)
     if author.startswith('aus '):
         return ('', None)
+
+    # Doubled/corrupted entries like "Aus …landAus …land" or "ProduktProduktname"
+    if re.search(r'(.{4,})\1', author):
+        return ('', None)
+
+    # Fragment starting with /
+    if author.startswith('/'):
+        return ('', None)
+
+    # "Work / Character" play/dialogue references
+    if ' / ' in author:
+        if 'Sprichwort' in author:
+            return ('Sprichwort', None)
+        if any(w in author for w in ('GmbH', 'Produkt', 'Urheber')):
+            return ('Werbespruch', None)
+        return ('', author)
+
+    # Company names → Werbespruch
+    if 'GmbH' in author or re.search(r'& (?:Co|Cie)\b', author):
+        return ('Werbespruch', None)
+
+    # Work/film/book titles -> move to category (not an author)
+    if _is_work_title(author):
+        return ('', author)
+
+    # Wikiquote disambiguation/topic pages: "Word (Descriptor)"
+    m = re.match(r'^(.+?)\s+\(([^)]+)\)$', author)
+    if m:
+        desc = m.group(2).strip()
+        base = m.group(1).strip()
+        # Letter range index pages: (a-d), (e-m), (n-z)
+        if re.match(r'^[a-z]-[a-z]$', desc):
+            return ('', author)
+        # Known disambiguation types
+        if desc in DISAMBIGUATION_PAGE_TYPES:
+            return ('', author)
+        # Person name with profession/party/years → strip parens
+        if _looks_like_person_name(base) and len(base) > 5:
+            return (base, None)
+        # Year range like (1912-84)
+        if re.match(r'^\d{4}[–-]\d{2,4}$', desc):
+            return (base, None)
+
+    # "Kapitel N" chapter references -> move to category
+    if author.startswith('Kapitel'):
+        return ('', author)
+
+    # Source references: "Name in der/dem/einem/einer..."
+    # Must check BEFORE truncated-name stripping since these contain full names
+    name = _extract_name_from_source_ref(author)
+    if name:
+        return (name, None)
+
+    # "Name TitleWord Title" → extract person name before work title
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:Das|Der|Die|Ein|Eine|Über|Zur|Von|Vom|Zum) \w', author)
+    if m:
+        candidate = m.group(1).strip()
+        if _looks_like_person_name(candidate) and len(candidate) > 5:
+            return (candidate, None)
+
+    # "Name über TOPIC" -> extract name
+    name = _extract_name_from_uber(author)
+    if name:
+        return (name, None)
 
     # "nach NAME" -> extract NAME as author
     m = re.match(r'^nach (\w.+)', author)
     if m:
         name = m.group(1).strip()
-        # "nach der Schlacht..." is not an author
         if name[0].isupper() and not name.startswith(('der ', 'einer ', 'dem ')):
             return (name, None)
+        return ('', None)
+
+    # "von NAME" or "von NAME in/im CONTEXT" → extract NAME
+    if author.startswith('von '):
+        rest = author[4:].strip()
+        name = _extract_name_from_source_ref(rest)
+        if name:
+            return (name, None)
+        # "von Name im/in/bei CONTEXT" → extract just the name
+        m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:im|in|bei|auf|am|vom|zu)\s+', rest)
+        if m:
+            candidate = m.group(1).strip()
+            if _looks_like_person_name(candidate):
+                return (candidate, None)
+        if _looks_like_person_name(rest) and len(rest) > 3:
+            return (rest, None)
         return ('', None)
 
     # Attribution: "X zugeschrieben" or "X fälschlich zugeschrieben"
     m = re.match(r'^(.+?)\s*\(?(?:fälschlich\s+)?zugeschrieben', author)
     if m:
         candidate = m.group(1).strip()
-        # Skip if candidate is a meta-phrase not a name
         if candidate and candidate[0].isupper() and len(candidate) > 3:
             return (candidate, None)
         return ('', None)
-    # "Fälschlich X zugeschrieben" or "Häufig X zugeschrieben"
     m = re.match(r'^(?:Fälschlich|Häufig|Obwohl regelmäßig)\s+(?:\S+\s+)*?(\w[\w\s.]+?)\s+(?:fälschlich\s+)?zugeschrieben', author)
     if m:
         candidate = m.group(1).strip()
@@ -352,20 +831,97 @@ def _clean_author(author: str, text: str) -> tuple[str, str | None]:
 
     # Starts with '(' - truncated parenthetical fragments
     if author.startswith('('):
-        # "(Johann König)" -> extract name
         m = re.match(r'^\(([A-ZÄÖÜ][\w\s.]+)\)$', author)
         if m:
             return (m.group(1).strip(), None)
-        # "(Vor-)Letzte Worte" -> keep as-is (it's a source type)
         if 'Worte' in author or 'Rede' in author:
             return (author, None)
-        # Other truncated parens -> clear
         return ('', None)
 
     # Reference fragments containing 'vgl'
     if 'vgl' in author.lower():
         return ('', None)
+
+    # Literary/religious sources as authors -> move to category
+    # Note: Ilias, Aias, Werke are handled in run_full_cleanup post-processing
+    # because they may need swapping with category (which holds the real author)
+    if author in ('Bibel', 'Koran', 'Yvain'):
+        return ('', author)
+
+    # Descriptions / wiki metadata -> move to category
+    if re.match(r'^(?:Über die |Wahlspruch |Grundannahme |Saarkundgebung |Tagebucheintrag '
+                 r'|Sperrung von |Ohne Kenntnis |Meinungsbilder/|Leitsatz von '
+                 r'|Drei Quellen |So soll er |Reaktion auf |Sprichwort aus Gespräch)', author):
+        return ('', author)
+
+    # "Sprichwort + extra comment in parens" -> strip the comment
+    m = re.match(r'^((?:\w+ )?Sprichwort(?:\w*)?)\s+\(.+\)$', author)
+    if m:
+        return (m.group(1).strip(), None)
+    # "Sprichwörtlich/Sprichwortörtlich nach NAME" -> extract name
+    if re.match(r'^Sprichwort(?:ört)?lich', author):
+        m = re.match(r'^Sprichwort(?:ört)?lich(?:e Anspielung)?\s+nach\s+(.+)', author)
+        if m:
+            return (m.group(1).strip(), None)
+        return ('', author)
+
+    # "Name „Work Title"" or 'Name „Title"' — check before length cutoff
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+[„"»«]', author)
+    if m:
+        candidate = m.group(1).strip()
+        if _looks_like_person_name(candidate) and len(candidate) > 5:
+            return (candidate, None)
+
+    # Long authors (>55 chars) are almost always descriptions, not names
+    if len(author) > 55:
+        # Try to extract a person name from the beginning
+        m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]{3,40}?)\s+(?:in |bei |im |zur |auf |am |vom |zu |über |nach |\d{4})', author)
+        if m:
+            candidate = m.group(1).strip().rstrip(',')
+            if _looks_like_person_name(candidate):
+                return (candidate, None)
+        # Move the whole thing to category
+        return ('', author)
+
+    # "Name (YYYY)" with year in parens -> strip the year
+    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+\(\d{4}\)$', author)
+    if m:
+        return (m.group(1).strip(), None)
+
+    # "Brief von Name (YYYY) ..." -> extract name
+    m = re.match(r'^Brief von\s+(.+?)(?:\s+\(|\s+an\b)', author)
+    if m:
+        candidate = m.group(1).strip()
+        if _looks_like_person_name(candidate):
+            return (candidate, None)
+
+    # Magazine/newspaper references ending in "Nr" -> move to category
+    if author.endswith(' Nr') or re.search(r' Nr\b', author):
+        # Try to extract a person name from before the publication
+        m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:in |im )', author)
+        if m:
+            candidate = m.group(1).strip()
+            if _looks_like_person_name(candidate):
+                return (candidate, None)
+        return ('', author)
+
+    # DER SPIEGEL, ARD-Jahrbuch, etc. (all-caps publication names)
+    if re.match(r'^[A-Z]{2,}[ -]', author):
+        return ('', author)
+
+    # "Fragen zur Wikiquote/..." -> clear
+    if author.startswith('Fragen zur '):
         return ('', None)
+
+    # Split glued name+title
+    fixed = _split_glued_name_title(author)
+    if fixed != author:
+        author = fixed
+
+    # Strip truncated name endings (1-2 char fragments from VARCHAR(255) truncation)
+    fixed = _strip_truncated_name_ending(author)
+    if fixed != author:
+        author = fixed
 
     return (author, None)
 
@@ -402,16 +958,24 @@ def run_full_cleanup() -> dict[str, int]:
     all_quotes = Quote.query.all()
     stats['total_quotes'] = len(all_quotes)
 
-    for quote in all_quotes:
+    for i, quote in enumerate(all_quotes):
         # Text cleanup
         new_text = _clean_text(quote.text)
         if new_text != quote.text:
             stats['text_cleaned'] += 1
             quote.text = new_text
 
-        # Author cleanup
+        # Author cleanup (run twice to converge — first pass may produce
+        # a value that the second pass further cleans, e.g. extracted author
+        # that itself needs cleanup)
         new_author, new_cat = _clean_author(quote.author or '', quote.text)
         new_author = new_author.strip()
+        new_author2, new_cat2 = _clean_author(new_author, quote.text)
+        new_author2 = new_author2.strip()
+        if new_author2 != new_author:
+            new_author = new_author2
+            if new_cat2 is not None:
+                new_cat = new_cat2
         old_author = (quote.author or '').strip()
         if new_author != old_author:
             stats['author_cleaned'] += 1
@@ -419,9 +983,10 @@ def run_full_cleanup() -> dict[str, int]:
 
         # If author was an origin label, move to category
         if new_cat is not None:
-            stats['author_to_category'] += 1
             if not quote.category or quote.category == old_author:
-                quote.category = new_cat
+                if quote.category != new_cat:
+                    stats['author_to_category'] += 1
+                    quote.category = new_cat
 
         # Category cleanup
         new_category = _clean_category(quote.category or '')
@@ -429,8 +994,63 @@ def run_full_cleanup() -> dict[str, int]:
             stats['category_cleaned'] += 1
             quote.category = new_category
 
-    db.session.flush()
+        # Flush in batches to avoid memory/transaction issues
+        if (i + 1) % 1000 == 0:
+            db.session.flush()
+
+    db.session.commit()
     logger.info('Text/author/category cleanup done: %s', dict(stats))
+
+    # --- Post-processing: context-dependent fixes (need category info) ---
+    all_quotes = Quote.query.all()
+    for i, quote in enumerate(all_quotes):
+        author = (quote.author or '').strip()
+        cat = (quote.category or '').strip()
+        if not author:
+            continue
+
+        # Single-word brand names with Werbespruch category -> 'Werbespruch'
+        if ' ' not in author and cat == 'Werbespruch' and author != 'Werbespruch':
+            quote.author = 'Werbespruch'
+            stats['brand_to_werbespruch'] += 1
+            continue
+
+        # Single-word truncated first names: category starts with "Author X"
+        # e.g. author="Georg", category="Georg B" -> both were truncated from VARCHAR(255)
+        if ' ' not in author and cat and re.match(re.escape(author) + r' [A-ZÄÖÜ]', cat):
+            quote.author = ''
+            stats['truncated_firstname_cleared'] += 1
+            continue
+
+        # Literary works where category holds the real author:
+        # e.g. author="Ilias" category="Homer" or author="Aias" category="Sophokles"
+        if author in ('Ilias', 'Aias', 'Werke') and cat:
+            if _looks_like_person_name(cat):
+                quote.category = author
+                quote.author = cat
+                stats['author_category_swapped'] += 1
+            else:
+                # Category is not a person name, just move work to category
+                quote.author = ''
+                quote.category = author
+                stats['author_to_category'] += 1
+            continue
+
+        # Single-word 3-5 char authors not known as single-name figures → clear
+        # (truncated first names like Axel, Fred, Hans, Horst, etc.)
+        if (' ' not in author and 3 <= len(author) <= 5
+                and author[0].isupper() and author not in KNOWN_SINGLE_NAMES
+                and cat != 'Werbespruch'):
+            quote.author = ''
+            stats['truncated_firstname_cleared'] += 1
+            continue
+
+        if (i + 1) % 1000 == 0:
+            db.session.flush()
+
+    db.session.commit()
+    logger.info('Post-processing done: %s', {k: v for k, v in stats.items()
+                if k in ('brand_to_werbespruch', 'truncated_firstname_cleared', 'author_category_swapped')})
 
     # --- Dedup: exact text duplicates ---
     text_groups = (
