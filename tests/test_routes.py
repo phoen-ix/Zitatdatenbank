@@ -34,10 +34,10 @@ def test_browse_filter_by_author(client, app, make_quote):
     assert b'Goethe' in response.data
 
 
-def test_browse_filter_by_category(client, app, make_quote):
+def test_browse_filter_by_tag(client, app, make_quote):
     with app.app_context():
-        make_quote(text='A wise quote', category='Wisdom')
-    response = client.get('/browse?category=Wisdom')
+        make_quote(text='A wise quote', tags=['Wisdom'])
+    response = client.get('/browse?tag=Wisdom')
     assert response.status_code == 200
 
 
@@ -68,12 +68,12 @@ def test_authors_letter_filter(client, app, make_quote):
     assert b'Goethe' in response.data
 
 
-def test_categories_page(client, app, make_quote):
+def test_tags_page(client, app, make_quote):
     with app.app_context():
-        make_quote(category='Liebe')
-        make_quote(category='Liebe')
-        make_quote(category='Natur')
-    response = client.get('/browse/categories')
+        make_quote(tags=['Liebe'])
+        make_quote(tags=['Liebe'])
+        make_quote(tags=['Natur'])
+    response = client.get('/browse/tags')
     assert response.status_code == 200
     assert b'Liebe' in response.data
 
@@ -120,6 +120,7 @@ def test_api_random(client, app, make_quote):
     data = response.get_json()
     assert 'text' in data
     assert 'author' in data
+    assert 'tags' in data
 
 
 def test_api_random_empty(client, app):
@@ -138,7 +139,6 @@ def test_health(client, app):
 def test_set_lang(client, app):
     response = client.get('/set-lang/en', follow_redirects=True)
     assert response.status_code == 200
-    # After setting to EN, pages should show English text
     response = client.get('/')
     assert b'Home' in response.data or b'Quote Database' in response.data
 
@@ -160,3 +160,18 @@ def test_csp_not_on_json(client, app):
     response = client.get('/health')
     csp = response.headers.get('Content-Security-Policy')
     assert csp is None
+
+
+def test_credits_page(client, app):
+    response = client.get('/credits')
+    assert response.status_code == 200
+    assert b'Creative Commons' in response.data
+    assert b'BY-SA 3.0' in response.data
+
+
+def test_search_by_tag(client, app, make_quote):
+    with app.app_context():
+        make_quote(text='Quote with tag', tags=['Philosophy'])
+    response = client.get('/search?q=Philosophy')
+    assert response.status_code == 200
+    assert b'Quote with tag' in response.data

@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}{{ _('all_categories') }} - {{ site_name }}{% endblock %}
+{% block title %}{{ _('all_tags') }} - {{ site_name }}{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">{{ _('all_categories') }} <small class="text-muted">({{ total }})</small></h2>
+<h2 class="mb-4">{{ _('all_tags') }} <small class="text-muted">({{ total }})</small></h2>
 
 <div class="row">
-    {% for category, count in categories %}
+    {% for tag_name, count in tags %}
     <div class="col-md-6 col-lg-4 mb-2">
-        <a href="{{ url_for('main.browse', category=category) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-            {{ category }}
+        <a href="{{ url_for('main.browse', tag=tag_name) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+            {{ tag_name }}
             <span class="badge bg-primary rounded-pill" style="background-color: var(--theme-accent) !important;">{{ count }}</span>
         </a>
     </div>
@@ -20,13 +20,13 @@
     <ul class="pagination justify-content-center">
         {% if page > 1 %}
         <li class="page-item">
-            <a class="page-link" href="{{ url_for('main.categories', page=page-1) }}">&laquo; {{ _('prev') }}</a>
+            <a class="page-link" href="{{ url_for('main.tags', page=page-1) }}">&laquo; {{ _('prev') }}</a>
         </li>
         {% endif %}
         <li class="page-item disabled"><span class="page-link">{{ _('page') }} {{ page }} {{ _('of') }} {{ total_pages }}</span></li>
         {% if page < total_pages %}
         <li class="page-item">
-            <a class="page-link" href="{{ url_for('main.categories', page=page+1) }}">{{ _('next') }} &raquo;</a>
+            <a class="page-link" href="{{ url_for('main.tags', page=page+1) }}">{{ _('next') }} &raquo;</a>
         </li>
         {% endif %}
     </ul>

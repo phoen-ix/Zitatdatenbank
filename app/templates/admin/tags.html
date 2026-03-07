@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ _('admin_tags') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">{{ _('admin_tags') }}</h2>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-plus-lg"></i> {{ _('add_tag') }}
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.add_tag') }}" class="row g-2 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-auto flex-grow-1">
+                <label for="name" class="form-label">{{ _('tag_name') }}</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> {{ _('add_tag') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th style="width:60px">{{ _('id') }}</th>
+                <th>{{ _('tag_name') }}</th>
+                <th style="width:100px">{{ _('quotes_count') }}</th>
+                <th style="width:100px">{{ _('actions') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tag_id, tag_name, count in tags %}
+            <tr>
+                <td>{{ tag_id }}</td>
+                <td>{{ tag_name }}</td>
+                <td><span class="badge bg-secondary">{{ count }}</span></td>
+                <td>
+                    <form method="POST" action="{{ url_for('admin.delete_tag', tag_id=tag_id) }}" class="d-inline" data-confirm="{{ _('confirm_delete') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('delete') }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

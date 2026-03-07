@@ -231,6 +231,71 @@ def _auto_cleanup():
     logger.info('Auto-cleanup complete: %s', stats)
 
 
+def _auto_migrate_tags():
+    """Migrate category field to tags (one-time). Adds default tags to all quotes."""
+    from helpers import get_setting, set_setting
+    if get_setting('tags_migrated', '') == '1':
+        return
+    count = db.session.query(models.Quote).count()
+    if count == 0:
+        return
+    logger.info('Migrating categories to tags...')
+
+    # Create default tags
+    default_tag_names = ['Deutsch', 'German', 'Quelle: Zitatdatenbank']
+    default_tags = []
+    for name in default_tag_names:
+        tag = models.Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = models.Tag(name=name)
+            db.session.add(tag)
+            db.session.flush()
+        default_tags.append(tag)
+
+    # Build tag cache from all existing tags + categories
+    tag_cache: dict[str, models.Tag] = {}
+    for tag in models.Tag.query.all():
+        tag_cache[tag.name] = tag
+    for t in default_tags:
+        tag_cache[t.name] = t
+
+    all_quotes = models.Quote.query.all()
+    categories_seen: dict[str, str] = {}  # lowercase -> preferred casing
+    for q in all_quotes:
+        cat = (q.category or '').strip()
+        if cat and cat.lower() not in categories_seen:
+            categories_seen[cat.lower()] = cat
+
+    # Create tags for unique categories not yet in DB (case-insensitive dedup)
+    tag_cache_lower = {k.lower(): v for k, v in tag_cache.items()}
+    for cat_lower, cat_name in categories_seen.items():
+        if cat_lower not in tag_cache_lower:
+            tag = models.Tag(name=cat_name)
+            db.session.add(tag)
+            tag_cache[cat_name] = tag
+            tag_cache_lower[cat_lower] = tag
+        else:
+            # Map original category name to existing tag
+            tag_cache[cat_name] = tag_cache_lower[cat_lower]
+    db.session.flush()
+
+    # Assign tags to quotes (default tags + category tag)
+    for i, q in enumerate(all_quotes):
+        q.tags = list(default_tags)
+        cat = (q.category or '').strip()
+        if cat and cat in tag_cache:
+            cat_tag = tag_cache[cat]
+            if cat_tag not in q.tags:
+                q.tags.append(cat_tag)
+        if (i + 1) % 1000 == 0:
+            db.session.flush()
+            logger.info('Tagged %d / %d quotes', i + 1, len(all_quotes))
+
+    db.session.commit()
+    set_setting('tags_migrated', '1')
+    logger.info('Tag migration complete: %d quotes, %d tags created', len(all_quotes), len(tag_cache))
+
+
 # Startup logic
 if os.environ.get('FLASK_TESTING') != '1':
     from sqlalchemy.exc import OperationalError
@@ -244,6 +309,7 @@ if os.environ.get('FLASK_TESTING') != '1':
                 _ensure_admin()
                 _auto_import()
                 _auto_cleanup()
+                _auto_migrate_tags()
             break
         except OperationalError:
             if attempt == max_retries:

@@ -21,14 +21,15 @@
                 {% else %}
                 <span class="quote-author">{{ _('unknown_author') }}</span>
                 {% endif %}
-                {% if quote.category and quote.category != quote.author %}
-                &middot;
-                <a href="{{ url_for('main.browse', category=quote.category) }}" class="text-muted text-decoration-none">
-                    {{ quote.category }}
-                </a>
-                {% endif %}
             </footer>
         </blockquote>
+        {% if quote.tags %}
+        <div class="mt-2">
+            {% for tag in quote.tags %}
+            <a href="{{ url_for('main.browse', tag=tag.name) }}" class="badge bg-secondary text-decoration-none">{{ tag.name }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
     <div class="card-footer text-muted small">
         {{ _('id') }} {{ quote.id }}

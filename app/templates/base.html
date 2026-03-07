@@ -135,7 +135,7 @@
                         <a class="nav-link" href="{{ url_for('main.authors') }}">{{ _('nav_authors') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.categories') }}">{{ _('nav_categories') }}</a>
+                        <a class="nav-link" href="{{ url_for('main.tags') }}">{{ _('nav_tags') }}</a>
                     </li>
                 </ul>
                 <form class="d-flex me-3" action="{{ url_for('main.search') }}" method="GET">
@@ -193,7 +193,7 @@
 
     <footer class="mt-5 py-4">
         <div class="container text-center text-muted">
-            <p>&copy; {{ _('footer_text') }}</p>
+            <p>&copy; {{ _('footer_text') }} &middot; <a href="{{ url_for('main.credits_page') }}" class="text-muted text-decoration-none">{{ _('credits') }}</a></p>
         </div>
     </footer>
 

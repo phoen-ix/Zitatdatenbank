@@ -68,7 +68,7 @@ def test_admin_add_quote_post(admin_client, app):
         response = admin_client.post('/admin/quotes/add', data={
             'text': 'New admin quote',
             'author': 'TestAuthor',
-            'category': 'TestCat',
+            'tags': 'TestTag, AnotherTag',
         }, follow_redirects=True)
         assert response.status_code == 200
 
@@ -76,6 +76,8 @@ def test_admin_add_quote_post(admin_client, app):
         q = Quote.query.filter_by(author='TestAuthor').first()
         assert q is not None
         assert q.text == 'New admin quote'
+        tag_names = sorted(t.name for t in q.tags)
+        assert tag_names == ['AnotherTag', 'TestTag']
 
 
 def test_admin_add_quote_empty_text(admin_client, app):
@@ -88,14 +90,14 @@ def test_admin_add_quote_empty_text(admin_client, app):
 
 def test_admin_edit_quote(admin_client, app, make_quote):
     with app.app_context():
-        q = make_quote(text='Original text', author='OrigAuthor')
+        q = make_quote(text='Original text', author='OrigAuthor', tags=['OldTag'])
         quote_id = q.id
 
     with app.app_context():
         response = admin_client.post(f'/admin/quotes/{quote_id}/edit', data={
             'text': 'Updated text',
             'author': 'NewAuthor',
-            'category': 'NewCat',
+            'tags': 'NewTag',
         }, follow_redirects=True)
         assert response.status_code == 200
 
@@ -104,6 +106,8 @@ def test_admin_edit_quote(admin_client, app, make_quote):
         updated = db.session.get(Quote, quote_id)
         assert updated.text == 'Updated text'
         assert updated.author == 'NewAuthor'
+        assert len(updated.tags) == 1
+        assert updated.tags[0].name == 'NewTag'
 
 
 def test_admin_delete_quote(admin_client, app, make_quote):
@@ -118,6 +122,52 @@ def test_admin_delete_quote(admin_client, app, make_quote):
         from models import Quote
         from extensions import db
         assert db.session.get(Quote, quote_id) is None
+
+
+def test_admin_tags_list(admin_client, app, make_quote):
+    with app.app_context():
+        make_quote(tags=['Philosophy'])
+    response = admin_client.get('/admin/tags')
+    assert response.status_code == 200
+    assert b'Philosophy' in response.data
+
+
+def test_admin_add_tag(admin_client, app):
+    with app.app_context():
+        response = admin_client.post('/admin/tags/add', data={
+            'name': 'NewTag',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+        from models import Tag
+        tag = Tag.query.filter_by(name='NewTag').first()
+        assert tag is not None
+
+
+def test_admin_add_duplicate_tag(admin_client, app, make_quote):
+    with app.app_context():
+        make_quote(tags=['Existing'])
+    with app.app_context():
+        response = admin_client.post('/admin/tags/add', data={
+            'name': 'Existing',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+
+def test_admin_delete_tag(admin_client, app, make_quote):
+    with app.app_context():
+        make_quote(tags=['ToDelete'])
+        from models import Tag
+        tag = Tag.query.filter_by(name='ToDelete').first()
+        tag_id = tag.id
+
+    response = admin_client.post(f'/admin/tags/{tag_id}/delete', follow_redirects=True)
+    assert response.status_code == 200
+
+    with app.app_context():
+        from models import Tag
+        from extensions import db
+        assert db.session.get(Tag, tag_id) is None
 
 
 def test_admin_settings_get(admin_client, app):

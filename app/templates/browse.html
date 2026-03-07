@@ -18,16 +18,16 @@
             {% if author_filter %}
             <input type="hidden" name="author" value="{{ author_filter }}">
             {% endif %}
-            {% if category_filter %}
-            <input type="hidden" name="category" value="{{ category_filter }}">
+            {% if tag_filter %}
+            <input type="hidden" name="tag" value="{{ tag_filter }}">
             {% endif %}
         </form>
     </div>
     <div class="col-md-4 text-end">
-        {% if author_filter or category_filter %}
+        {% if author_filter or tag_filter %}
         <span class="badge bg-secondary me-1">
             {% if author_filter %}{{ _('author') }}: {{ author_filter }}{% endif %}
-            {% if category_filter %}{{ _('category') }}: {{ category_filter }}{% endif %}
+            {% if tag_filter %}Tag: {{ tag_filter }}{% endif %}
         </span>
         <a href="{{ url_for('main.browse') }}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-x"></i> Clear
@@ -49,11 +49,11 @@
                     <i class="bi bi-person"></i> {{ quote.author }}
                 </a>
                 {% endif %}
-                {% if quote.category and quote.category != quote.author %}
-                <a href="{{ url_for('main.browse', category=quote.category) }}" class="badge bg-secondary text-decoration-none ms-2">
-                    {{ quote.category }}
+                {% for tag in quote.tags %}
+                <a href="{{ url_for('main.browse', tag=tag.name) }}" class="badge bg-secondary text-decoration-none ms-1">
+                    {{ tag.name }}
                 </a>
-                {% endif %}
+                {% endfor %}
             </div>
             <a href="{{ url_for('main.quote_detail', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-arrow-right"></i>
@@ -63,7 +63,7 @@
 </div>
 {% endfor %}
 
-{% with kwargs={'author': author_filter, 'category': category_filter, 'sort': sort} %}
+{% with kwargs={'author': author_filter, 'tag': tag_filter, 'sort': sort} %}
 {% include '_pagination.html' %}
 {% endwith %}
 

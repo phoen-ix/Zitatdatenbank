@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ _('credits') }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">{{ _('credits_title') }}</h2>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-database"></i> {{ _('credits_source') }}
+    </div>
+    <div class="card-body">
+        <p>{{ _('credits_source_text') }}</p>
+        <p>
+            <a href="https://www.datenbörse.net/item/Zitatdatenbank" target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-box-arrow-up-right"></i> datenbörse.net/item/Zitatdatenbank
+            </a>
+        </p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-file-earmark-text"></i> {{ _('credits_license') }}
+    </div>
+    <div class="card-body">
+        <p>{{ _('credits_license_text') }}</p>
+        <p>
+            <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-box-arrow-up-right"></i> Creative Commons BY-SA 3.0
+            </a>
+        </p>
+        <div class="alert alert-secondary mt-3">
+            <small>
+                {% if current_lang == 'de' %}
+                Sie dürfen das Material in jedwedem Format oder Medium vervielfältigen und weiterverbreiten,
+                das Material remixen, verändern und darauf aufbauen — und zwar für beliebige Zwecke, sogar kommerziell.
+                Unter folgenden Bedingungen: <strong>Namensnennung</strong> — Sie müssen angemessene Urheber- und Rechteangaben machen.
+                <strong>Weitergabe unter gleichen Bedingungen</strong> — Wenn Sie das Material remixen, verändern oder anderweitig
+                direkt darauf aufbauen, dürfen Sie Ihre Beiträge nur unter derselben Lizenz verbreiten.
+                {% else %}
+                You are free to share — copy and redistribute the material in any medium or format,
+                and to adapt — remix, transform, and build upon the material for any purpose, even commercially.
+                Under the following terms: <strong>Attribution</strong> — You must give appropriate credit.
+                <strong>ShareAlike</strong> — If you remix, transform, or build upon the material,
+                you must distribute your contributions under the same license.
+                {% endif %}
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}

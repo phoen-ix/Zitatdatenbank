@@ -5,7 +5,7 @@ from flask_login import login_required
 from sqlalchemy import func
 
 from extensions import db
-from models import Quote, BackupLog, Setting
+from models import Quote, Tag, BackupLog, Setting, quote_tags
 from helpers import _, get_setting, set_setting, get_theme_overrides
 from config import ADMIN_QUOTES_PER_PAGE, THEMES, DEFAULT_THEME, BACKUP_DIR, COLOR_KEYS, EFFECT_KEYS, ALL_THEME_KEYS
 from backup_service import run_backup, restore_backup, list_backups, delete_backup_file
@@ -19,22 +19,35 @@ def require_login():
     pass
 
 
+def _sync_tags(quote, tag_string):
+    """Parse comma-separated tag string and sync tags to quote."""
+    tag_names = [t.strip() for t in tag_string.split(',') if t.strip()]
+    # Get or create tags
+    new_tags = []
+    for name in tag_names:
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+            db.session.flush()
+        new_tags.append(tag)
+    quote.tags = new_tags
+
+
 @admin_bp.route('/')
 def dashboard():
     total_quotes = db.session.query(func.count(Quote.id)).scalar() or 0
     total_authors = db.session.query(func.count(func.distinct(Quote.author))).filter(
         Quote.author != '', Quote.author.isnot(None)
     ).scalar() or 0
-    total_categories = db.session.query(func.count(func.distinct(Quote.category))).filter(
-        Quote.category != '', Quote.category.isnot(None)
-    ).scalar() or 0
+    total_tags = db.session.query(func.count(Tag.id)).scalar() or 0
 
     recent_quotes = Quote.query.order_by(Quote.id.desc()).limit(10).all()
 
     return render_template('admin/dashboard.html',
                            total_quotes=total_quotes,
                            total_authors=total_authors,
-                           total_categories=total_categories,
+                           total_tags=total_tags,
                            recent_quotes=recent_quotes)
 
 
@@ -46,11 +59,14 @@ def quotes():
     query = Quote.query
     if q:
         like_pattern = f'%{q}%'
+        tag_subquery = db.session.query(quote_tags.c.quote_id).join(
+            Tag, Tag.id == quote_tags.c.tag_id
+        ).filter(Tag.name.ilike(like_pattern)).subquery()
         query = query.filter(
             db.or_(
                 Quote.text.ilike(like_pattern),
                 Quote.author.ilike(like_pattern),
-                Quote.category.ilike(like_pattern),
+                Quote.id.in_(db.session.query(tag_subquery.c.quote_id)),
             )
         )
 
@@ -68,15 +84,17 @@ def add_quote():
     if request.method == 'POST':
         text = request.form.get('text', '').strip()
         author = request.form.get('author', '').strip()
-        category = request.form.get('category', '').strip()
+        tags_str = request.form.get('tags', '').strip()
 
         if not text:
             flash(_('quote_text') + ' is required.', 'error')
             return render_template('admin/quote_form.html', quote=None,
                                    form_data=request.form)
 
-        quote = Quote(text=text, author=author, category=category)
+        quote = Quote(text=text, author=author)
         db.session.add(quote)
+        db.session.flush()
+        _sync_tags(quote, tags_str)
         db.session.commit()
         flash(_('save') + ' OK', 'success')
         return redirect(url_for('admin.quotes'))
@@ -94,13 +112,14 @@ def edit_quote(quote_id):
     if request.method == 'POST':
         quote.text = request.form.get('text', '').strip()
         quote.author = request.form.get('author', '').strip()
-        quote.category = request.form.get('category', '').strip()
+        tags_str = request.form.get('tags', '').strip()
 
         if not quote.text:
             flash(_('quote_text') + ' is required.', 'error')
             return render_template('admin/quote_form.html', quote=quote,
                                    form_data=request.form)
 
+        _sync_tags(quote, tags_str)
         db.session.commit()
         flash(_('save') + ' OK', 'success')
         return redirect(url_for('admin.quotes'))
@@ -118,6 +137,39 @@ def delete_quote(quote_id):
     return redirect(url_for('admin.quotes'))
 
 
+@admin_bp.route('/tags')
+def tags_list():
+    all_tags = db.session.query(
+        Tag.id, Tag.name, func.count(quote_tags.c.quote_id).label('count')
+    ).outerjoin(quote_tags, Tag.id == quote_tags.c.tag_id
+    ).group_by(Tag.id).order_by(Tag.name).all()
+    return render_template('admin/tags.html', tags=all_tags)
+
+
+@admin_bp.route('/tags/add', methods=['POST'])
+def add_tag():
+    name = request.form.get('name', '').strip()
+    if name:
+        existing = Tag.query.filter_by(name=name).first()
+        if existing:
+            flash(_('tag_exists'), 'error')
+        else:
+            db.session.add(Tag(name=name))
+            db.session.commit()
+            flash(_('save') + ' OK', 'success')
+    return redirect(url_for('admin.tags_list'))
+
+
+@admin_bp.route('/tags/<int:tag_id>/delete', methods=['POST'])
+def delete_tag(tag_id):
+    tag = db.session.get(Tag, tag_id)
+    if tag:
+        db.session.delete(tag)
+        db.session.commit()
+        flash(_('tag_deleted'), 'success')
+    return redirect(url_for('admin.tags_list'))
+
+
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 def settings():
     if request.method == 'POST':
@@ -133,12 +185,8 @@ def settings():
             previous_theme = get_setting('theme_name', DEFAULT_THEME)
             if theme_name in THEMES or theme_name == 'custom':
                 set_setting('theme_name', theme_name)
-                # Only save color/effect overrides when customizing the SAME theme.
-                # When switching themes, just apply defaults (avoids stale values
-                # from the previous theme being saved as overrides).
                 theme_changed = theme_name != previous_theme
                 if theme_changed and theme_name in THEMES:
-                    # Clear any stale overrides for the new theme
                     stale = Setting.query.filter(
                         Setting.key.like(f'theme_{theme_name}_%')
                     ).all()
@@ -158,7 +206,6 @@ def settings():
                         if val and val != defaults.get(key, ''):
                             set_setting(f'theme_{theme_name}_{key}', val)
                         elif val == defaults.get(key, ''):
-                            # Value matches default — remove override if it exists
                             s = db.session.get(Setting, f'theme_{theme_name}_{key}')
                             if s:
                                 db.session.delete(s)
@@ -181,7 +228,6 @@ def settings():
     current_theme = get_setting('theme_name', DEFAULT_THEME)
     overrides = get_theme_overrides()
 
-    # Build custom colors for legacy custom theme
     custom_colors = {}
     for key in COLOR_KEYS:
         custom_colors[key] = get_setting(f'custom_{key}', THEMES[DEFAULT_THEME].get(key, ''))

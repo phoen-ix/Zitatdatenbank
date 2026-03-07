@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from sqlalchemy import func, or_
 
 from extensions import db
-from models import Quote
+from models import Quote, Tag, quote_tags
 from helpers import _, get_setting
 from config import QUOTES_PER_PAGE
 
@@ -19,9 +19,7 @@ def index():
     total_authors = db.session.query(func.count(func.distinct(Quote.author))).filter(
         Quote.author != '', Quote.author.isnot(None)
     ).scalar() or 0
-    total_categories = db.session.query(func.count(func.distinct(Quote.category))).filter(
-        Quote.category != '', Quote.category.isnot(None)
-    ).scalar() or 0
+    total_tags = db.session.query(func.count(Tag.id)).scalar() or 0
 
     random_quote = None
     if total_quotes > 0:
@@ -34,22 +32,22 @@ def index():
                            random_quote=random_quote,
                            total_quotes=total_quotes,
                            total_authors=total_authors,
-                           total_categories=total_categories)
+                           total_tags=total_tags)
 
 
 @main_bp.route('/browse')
 def browse():
     page = request.args.get('page', 1, type=int)
     author_filter = request.args.get('author', '').strip()
-    category_filter = request.args.get('category', '').strip()
+    tag_filter = request.args.get('tag', '').strip()
     sort = request.args.get('sort', 'newest')
     per_page = int(get_setting('quotes_per_page', str(QUOTES_PER_PAGE)))
 
     query = Quote.query
     if author_filter:
         query = query.filter(Quote.author == author_filter)
-    if category_filter:
-        query = query.filter(Quote.category == category_filter)
+    if tag_filter:
+        query = query.filter(Quote.tags.any(Tag.name == tag_filter))
 
     if sort == 'oldest':
         query = query.order_by(Quote.id.asc())
@@ -66,7 +64,7 @@ def browse():
                            pagination=pagination,
                            quotes=pagination.items,
                            author_filter=author_filter,
-                           category_filter=category_filter,
+                           tag_filter=tag_filter,
                            sort=sort)
 
 
@@ -109,25 +107,24 @@ def authors():
                            total=total)
 
 
-@main_bp.route('/browse/categories')
-def categories():
+@main_bp.route('/browse/tags')
+def tags():
     page = request.args.get('page', 1, type=int)
 
     query = db.session.query(
-        Quote.category, func.count(Quote.id).label('count')
-    ).filter(
-        Quote.category != '', Quote.category.isnot(None)
-    ).group_by(Quote.category).order_by(func.count(Quote.id).desc())
+        Tag.name, func.count(quote_tags.c.quote_id).label('count')
+    ).join(quote_tags, Tag.id == quote_tags.c.tag_id
+    ).group_by(Tag.id).order_by(func.count(quote_tags.c.quote_id).desc())
 
     all_results = query.all()
     per_page = 50
     total = len(all_results)
     start = (page - 1) * per_page
     end = start + per_page
-    categories_page = all_results[start:end]
+    tags_page = all_results[start:end]
 
-    return render_template('categories.html',
-                           categories=categories_page,
+    return render_template('tags.html',
+                           tags=tags_page,
                            page=page,
                            total_pages=(total + per_page - 1) // per_page if total > 0 else 1,
                            total=total)
@@ -142,24 +139,26 @@ def search():
     if not q:
         return render_template('search_results.html', quotes=[], pagination=None, query='')
 
+    like_pattern = f'%{q}%'
+    # Search in text, author, and tags
+    tag_subquery = db.session.query(quote_tags.c.quote_id).join(
+        Tag, Tag.id == quote_tags.c.tag_id
+    ).filter(Tag.name.ilike(like_pattern)).subquery()
+
     if db.engine.dialect.name == 'sqlite':
-        # SQLite: use LIKE
-        like_pattern = f'%{q}%'
         query = Quote.query.filter(
             or_(
                 Quote.text.ilike(like_pattern),
                 Quote.author.ilike(like_pattern),
-                Quote.category.ilike(like_pattern),
+                Quote.id.in_(db.session.query(tag_subquery.c.quote_id)),
             )
         )
     else:
-        # MariaDB: use FULLTEXT on text, plus LIKE on author/category
-        like_pattern = f'%{q}%'
         query = Quote.query.filter(
             or_(
                 Quote.text.match(q),
                 Quote.author.ilike(like_pattern),
-                Quote.category.ilike(like_pattern),
+                Quote.id.in_(db.session.query(tag_subquery.c.quote_id)),
             )
         )
 
@@ -204,8 +203,13 @@ def api_random():
         'id': quote.id,
         'text': quote.text,
         'author': quote.author or '',
-        'category': quote.category or '',
+        'tags': [t.name for t in quote.tags],
     })
+
+
+@main_bp.route('/credits')
+def credits_page():
+    return render_template('credits.html')
 
 
 @main_bp.route('/health')

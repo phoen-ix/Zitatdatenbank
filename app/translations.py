@@ -5,7 +5,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'nav_home': {'de': 'Startseite', 'en': 'Home'},
     'nav_browse': {'de': 'Durchsuchen', 'en': 'Browse'},
     'nav_authors': {'de': 'Autoren', 'en': 'Authors'},
-    'nav_categories': {'de': 'Kategorien', 'en': 'Categories'},
+    'nav_tags': {'de': 'Tags', 'en': 'Tags'},
     'nav_search': {'de': 'Suche', 'en': 'Search'},
     'nav_admin': {'de': 'Verwaltung', 'en': 'Admin'},
     'nav_login': {'de': 'Anmelden', 'en': 'Login'},
@@ -19,14 +19,14 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'new_random': {'de': 'Neues Zitat', 'en': 'New Quote'},
     'total_quotes': {'de': 'Zitate gesamt', 'en': 'Total Quotes'},
     'total_authors': {'de': 'Autoren', 'en': 'Authors'},
-    'total_categories': {'de': 'Kategorien', 'en': 'Categories'},
+    'total_tags': {'de': 'Tags', 'en': 'Tags'},
 
     # Browse
     'browse_quotes': {'de': 'Zitate durchsuchen', 'en': 'Browse Quotes'},
     'all_authors': {'de': 'Alle Autoren', 'en': 'All Authors'},
-    'all_categories': {'de': 'Alle Kategorien', 'en': 'All Categories'},
+    'all_tags': {'de': 'Alle Tags', 'en': 'All Tags'},
     'filter_by_author': {'de': 'Nach Autor filtern', 'en': 'Filter by Author'},
-    'filter_by_category': {'de': 'Nach Kategorie filtern', 'en': 'Filter by Category'},
+    'filter_by_tag': {'de': 'Nach Tag filtern', 'en': 'Filter by Tag'},
     'sort_by': {'de': 'Sortieren nach', 'en': 'Sort by'},
     'sort_newest': {'de': 'Neueste zuerst', 'en': 'Newest first'},
     'sort_oldest': {'de': 'Älteste zuerst', 'en': 'Oldest first'},
@@ -36,7 +36,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'no_quotes_found': {'de': 'Keine Zitate gefunden.', 'en': 'No quotes found.'},
     'quote': {'de': 'Zitat', 'en': 'Quote'},
     'author': {'de': 'Autor', 'en': 'Author'},
-    'category': {'de': 'Kategorie', 'en': 'Category'},
+    'tags': {'de': 'Tags', 'en': 'Tags'},
     'unknown_author': {'de': 'Unbekannt', 'en': 'Unknown'},
 
     # Search
@@ -50,11 +50,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'quote_detail': {'de': 'Zitatdetails', 'en': 'Quote Details'},
     'back_to_browse': {'de': 'Zurück zur Übersicht', 'en': 'Back to Browse'},
     'more_by_author': {'de': 'Weitere Zitate von', 'en': 'More quotes by'},
-    'more_in_category': {'de': 'Weitere Zitate in Kategorie', 'en': 'More quotes in category'},
 
     # Admin
     'admin_dashboard': {'de': 'Admin-Dashboard', 'en': 'Admin Dashboard'},
     'admin_quotes': {'de': 'Zitate verwalten', 'en': 'Manage Quotes'},
+    'admin_tags': {'de': 'Tags verwalten', 'en': 'Manage Tags'},
     'admin_settings': {'de': 'Einstellungen', 'en': 'Settings'},
     'admin_backup': {'de': 'Backup', 'en': 'Backup'},
     'add_quote': {'de': 'Zitat hinzufügen', 'en': 'Add Quote'},
@@ -67,6 +67,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'actions': {'de': 'Aktionen', 'en': 'Actions'},
     'edit': {'de': 'Bearbeiten', 'en': 'Edit'},
     'quote_text': {'de': 'Zitattext', 'en': 'Quote Text'},
+    'add_tag': {'de': 'Tag hinzufügen', 'en': 'Add Tag'},
+    'tag_name': {'de': 'Tag-Name', 'en': 'Tag Name'},
+    'tags_help': {'de': 'Kommagetrennt, z.B. Liebe, Natur, Philosophie',
+                  'en': 'Comma-separated, e.g. Love, Nature, Philosophy'},
+    'tag_deleted': {'de': 'Tag gelöscht.', 'en': 'Tag deleted.'},
+    'tag_exists': {'de': 'Tag existiert bereits.', 'en': 'Tag already exists.'},
 
     # Settings
     'settings_general': {'de': 'Allgemein', 'en': 'General'},
@@ -106,6 +112,20 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'login_button': {'de': 'Anmelden', 'en': 'Login'},
     'login_failed': {'de': 'Ungültiger Benutzername oder Passwort.', 'en': 'Invalid username or password.'},
     'login_required': {'de': 'Bitte melden Sie sich an.', 'en': 'Please log in.'},
+
+    # Credits / Copyright
+    'credits': {'de': 'Credits & Lizenz', 'en': 'Credits & License'},
+    'credits_title': {'de': 'Credits & Lizenzinformationen', 'en': 'Credits & License Information'},
+    'credits_source': {'de': 'Datenquelle', 'en': 'Data Source'},
+    'credits_source_text': {
+        'de': 'Die Zitate in dieser Datenbank stammen aus der Zitatdatenbank von datenbörse.net.',
+        'en': 'The quotes in this database originate from the Zitatdatenbank (quote database) on datenbörse.net.',
+    },
+    'credits_license': {'de': 'Lizenz', 'en': 'License'},
+    'credits_license_text': {
+        'de': 'Die Daten stehen unter der Creative Commons Namensnennung - Weitergabe unter gleichen Bedingungen 3.0 Lizenz (CC BY-SA 3.0).',
+        'en': 'The data is licensed under the Creative Commons Attribution-ShareAlike 3.0 License (CC BY-SA 3.0).',
+    },
 
     # Misc
     'page': {'de': 'Seite', 'en': 'Page'},

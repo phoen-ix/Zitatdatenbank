@@ -24,8 +24,8 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h3 class="text-accent">{{ "{:,}".format(total_categories) }}</h3>
-                <p class="text-muted mb-0">{{ _('total_categories') }}</p>
+                <h3 class="text-accent">{{ "{:,}".format(total_tags) }}</h3>
+                <p class="text-muted mb-0">{{ _('total_tags') }}</p>
             </div>
         </div>
     </div>
@@ -44,6 +44,9 @@
                     </a>
                     <a href="{{ url_for('admin.quotes') }}" class="btn btn-outline-primary">
                         <i class="bi bi-list"></i> {{ _('admin_quotes') }}
+                    </a>
+                    <a href="{{ url_for('admin.tags_list') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-tags"></i> {{ _('admin_tags') }}
                     </a>
                     <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-primary">
                         <i class="bi bi-gear"></i> {{ _('admin_settings') }}

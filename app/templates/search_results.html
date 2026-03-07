@@ -32,11 +32,11 @@
                     <i class="bi bi-person"></i> {{ quote.author }}
                 </a>
                 {% endif %}
-                {% if quote.category and quote.category != quote.author %}
-                <a href="{{ url_for('main.browse', category=quote.category) }}" class="badge bg-secondary text-decoration-none ms-2">
-                    {{ quote.category }}
+                {% for tag in quote.tags %}
+                <a href="{{ url_for('main.browse', tag=tag.name) }}" class="badge bg-secondary text-decoration-none ms-1">
+                    {{ tag.name }}
                 </a>
-                {% endif %}
+                {% endfor %}
             </div>
             <a href="{{ url_for('main.quote_detail', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-arrow-right"></i>

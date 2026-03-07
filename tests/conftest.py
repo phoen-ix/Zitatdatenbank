@@ -51,14 +51,23 @@ def make_quote(app):
     """Factory fixture to create quotes."""
     _counter = [0]
 
-    def _make(text=None, author=None, category=None):
-        from models import Quote
+    def _make(text=None, author=None, category=None, tags=None):
+        from models import Quote, Tag
         _counter[0] += 1
         if text is None:
             text = f'Test quote number {_counter[0]}'
         quote = Quote(text=text, author=author or f'Author{_counter[0]}',
-                      category=category or f'Category{_counter[0]}')
+                      category=category)
         _db.session.add(quote)
+        _db.session.flush()
+        if tags:
+            for tag_name in tags:
+                tag = Tag.query.filter_by(name=tag_name).first()
+                if not tag:
+                    tag = Tag(name=tag_name)
+                    _db.session.add(tag)
+                    _db.session.flush()
+                quote.tags.append(tag)
         _db.session.commit()
         return quote
 

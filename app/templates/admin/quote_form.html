@@ -20,8 +20,11 @@
             </div>
 
             <div class="mb-3">
-                <label for="category" class="form-label">{{ _('category') }}</label>
-                <input type="text" class="form-control" id="category" name="category" value="{{ form_data.get('category', '') or (quote.category if quote else '') }}">
+                <label for="tags" class="form-label">{{ _('tags') }}</label>
+                <input type="text" class="form-control" id="tags" name="tags"
+                       value="{{ form_data.get('tags', '') or (quote.tags|map(attribute='name')|join(', ') if quote else '') }}"
+                       placeholder="{{ _('tags_help') }}">
+                <div class="form-text">{{ _('tags_help') }}</div>
             </div>
 
             <div class="d-flex gap-2">

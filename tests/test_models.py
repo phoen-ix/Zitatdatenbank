@@ -4,14 +4,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 def test_create_quote(app, make_quote):
     with app.app_context():
-        quote = make_quote(text='Life is short.', author='Seneca', category='Philosophy')
+        quote = make_quote(text='Life is short.', author='Seneca', tags=['Philosophy'])
         from extensions import db
         from models import Quote
         fetched = db.session.get(Quote, quote.id)
         assert fetched is not None
         assert fetched.text == 'Life is short.'
         assert fetched.author == 'Seneca'
-        assert fetched.category == 'Philosophy'
+        assert len(fetched.tags) == 1
+        assert fetched.tags[0].name == 'Philosophy'
 
 
 def test_quote_defaults(app):
@@ -87,4 +88,38 @@ def test_quote_nullable_fields(app):
         db.session.commit()
         fetched = db.session.get(Quote, q.id)
         assert fetched.author is None
-        assert fetched.category is None
+        assert fetched.tags == []
+
+
+def test_tag_model(app):
+    with app.app_context():
+        from extensions import db
+        from models import Tag
+        tag = Tag(name='TestTag')
+        db.session.add(tag)
+        db.session.commit()
+
+        fetched = Tag.query.filter_by(name='TestTag').first()
+        assert fetched is not None
+        assert fetched.name == 'TestTag'
+
+
+def test_quote_multiple_tags(app, make_quote):
+    with app.app_context():
+        quote = make_quote(text='Tagged quote', tags=['Love', 'Nature', 'Life'])
+        from extensions import db
+        from models import Quote
+        fetched = db.session.get(Quote, quote.id)
+        tag_names = sorted(t.name for t in fetched.tags)
+        assert tag_names == ['Life', 'Love', 'Nature']
+
+
+def test_tag_unique_name(app):
+    with app.app_context():
+        from extensions import db
+        from models import Tag
+        db.session.add(Tag(name='Unique'))
+        db.session.commit()
+        with pytest.raises(Exception):
+            db.session.add(Tag(name='Unique'))
+            db.session.commit()

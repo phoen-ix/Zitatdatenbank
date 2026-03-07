@@ -27,7 +27,7 @@
                 <th style="width:60px">{{ _('id') }}</th>
                 <th>{{ _('quote_text') }}</th>
                 <th style="width:150px">{{ _('author') }}</th>
-                <th style="width:150px">{{ _('category') }}</th>
+                <th style="width:200px">{{ _('tags') }}</th>
                 <th style="width:120px">{{ _('actions') }}</th>
             </tr>
         </thead>
@@ -37,7 +37,11 @@
                 <td>{{ quote.id }}</td>
                 <td>{{ quote.text[:100] }}{% if quote.text|length > 100 %}...{% endif %}</td>
                 <td>{{ quote.author or '' }}</td>
-                <td>{{ quote.category or '' }}</td>
+                <td>
+                    {% for tag in quote.tags %}
+                    <span class="badge bg-secondary">{{ tag.name }}</span>
+                    {% endfor %}
+                </td>
                 <td>
                     <a href="{{ url_for('admin.edit_quote', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary" title="{{ _('edit') }}">
                         <i class="bi bi-pencil"></i>
