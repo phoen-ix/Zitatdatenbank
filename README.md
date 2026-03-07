@@ -94,12 +94,13 @@ All theme colors and effects are customizable per-theme through the admin settin
 - **CSP** with nonce-based script-src, `frame-ancestors 'none'`, `object-src 'none'`
 - **X-Frame-Options: DENY**, **X-Content-Type-Options: nosniff**
 - **CSRF** protection on all forms (Flask-WTF)
-- **Rate limiting** on login (10/min) and API endpoints (30–60/min) with `X-RateLimit-*` headers
+- **Rate limiting** on login (10/min), search (30/min), and API endpoints (30–60/min) with `X-RateLimit-*` headers
 - **Session security** — HttpOnly, SameSite=Lax, Secure cookies, 8h timeout
-- **Input validation** — numeric bounds, hex color format, filename whitelist, page clamping, FULLTEXT operator sanitization, LIKE wildcard escaping
-- **Open redirect prevention** on login `next` parameter and `Referer`-based redirects
-- **Safe backups** — excludes app state tables (settings, admin users), tar rejects symlinks
-- **Data integrity** — `ON DELETE CASCADE` on foreign keys, `IntegrityError` handling on concurrent writes
+- **Input validation** — numeric bounds, hex color regex on all theme overrides, effect value int validation, filename whitelist, page clamping, FULLTEXT operator sanitization, LIKE wildcard escaping
+- **Open redirect prevention** on login `next` parameter (path-only) and `Referer`-based redirects (same-host check)
+- **Safe backups** — excludes app state tables, tar rejects symlinks, restore resets cleanup/migration state
+- **Data integrity** — `ON DELETE CASCADE` on foreign keys, savepoint-based `IntegrityError` handling on concurrent writes
+- **Transaction safety** — `begin_nested()` savepoints prevent tag race conditions from rolling back enclosing transactions
 
 ## API
 

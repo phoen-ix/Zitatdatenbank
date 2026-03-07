@@ -59,7 +59,7 @@ docker compose build && docker compose up -d
 - CSS variables in `:root` for all theme colors, no `is_dark` conditionals
 - `|nlbr` filter converts `//` in quote text to `<br>` tags (1,561 quotes affected)
 - Typing animation on animated themes processes all `.quote-text` elements, handles `<br>` nodes
-- Auth: Flask-Login with AdminUser model, env var auto-creation. Login rate-limited (10/min). Open redirect prevention on `next` param. Session: 8h timeout, HttpOnly, SameSite=Lax cookies.
+- Auth: Flask-Login with AdminUser model, env var auto-creation. Login rate-limited (10/min). Open redirect prevention on `next` param (requires relative path starting with `/`). Session: 8h timeout, HttpOnly, SameSite=Lax, Secure cookies.
 - Auto-import: Quotes imported on first startup if table is empty
 - Data files: Distributed as `data/data.tar.gz` (53MB), auto-extracted by entrypoint.sh on first start. Contains `zitate.sql` (German) and `quotes.csv` (English).
 - Auto-cleanup: Versioned (CLEANUP_VERSION in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Handles wiki markup, truncated authors, non-Latin scripts, sentence-like garbage authors, deduplication (CRC32-indexed text_hash column on MariaDB). All deletions (dedup, non-Latin, garbage) delete quote_tags FK entries first.
@@ -67,12 +67,13 @@ docker compose build && docker compose up -d
 - Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
 - Performance: In-memory cache (`_stats_cache` in helpers.py, 5-min TTL) for stats, theme, tags, settings. `invalidate_stats_cache()` clears all caches on data/settings changes. `FastPagination` skips COUNT queries. Keyset pagination on browse (cursor param). `selectinload(Quote.tags)` for batch tag loading. FULLTEXT MATCH for search on MariaDB.
-- REST API: `/api/random`, `/api/quotes` (browse/search/filter), `/api/quotes/<id>`. Rate-limited (30/min browse, 60/min detail). Returns JSON with id, text, author, tags. `X-RateLimit-*` headers on all responses.
+- REST API: `/api/random`, `/api/quotes` (browse/search/filter), `/api/quotes/<id>`. Rate-limited (30/min browse, 60/min detail). Returns JSON with id, text, author, tags. `X-RateLimit-*` headers on all responses. `/search` also rate-limited (30/min).
 - Security headers: CSP with nonce-based script-src, X-Frame-Options: DENY, X-Content-Type-Options: nosniff. CSRF on all forms.
-- Input validation: quotes_per_page (int 5-100), site_name (max 100 chars), color inputs (hex format), backup filenames (strict regex), page/per_page clamped to valid ranges. Cursor values < 1 ignored. FULLTEXT boolean operators sanitized. LIKE wildcards escaped.
-- Error handling: Custom 404/500 handlers. JSON responses for `/api/` routes, HTML templates for browser requests.
-- Backup: SQL dump excludes app state tables (setting, admin_user, backup_log, alembic_version). Restore validates tar members and rejects symlinks. Filename whitelist on download/restore/delete.
-- Atomicity: `set_setting(commit=False)` for batch operations, single commit per settings save. IntegrityError handling on tag creation.
+- Input validation: quotes_per_page (int 5-100, safe fallback on corrupt values), site_name (max 100 chars), color inputs (hex regex on both custom and named-theme overrides), effect inputs (int validation), backup filenames (strict regex), page/per_page clamped to valid ranges. Cursor values < 1 ignored. FULLTEXT boolean operators sanitized. LIKE wildcards escaped. DB credentials URL-encoded in connection URI.
+- Error handling: Custom 404/500 handlers. JSON responses for `/api/` routes, HTML templates for browser requests. Translated rate limit messages.
+- Backup: SQL dump excludes app state tables (setting, admin_user, backup_log, alembic_version). Restore validates tar members and rejects symlinks. Restore resets `cleanup_version` and `tags_migrated` so data quality steps re-run. Filename whitelist on download/restore/delete.
+- Atomicity: `set_setting(commit=False)` for batch operations, single commit per settings save. `begin_nested()` savepoints for tag creation to prevent IntegrityError from rolling back enclosing transactions.
 - Session: SESSION_COOKIE_SECURE in production, HttpOnly, SameSite=Lax, 8h timeout.
 - DB integrity: ON DELETE CASCADE on quote_tags FKs, index on tag_id.
+- Startup logging: Numbered steps [1/6]–[6/6] with progress and elapsed time for `docker compose logs -f`.
 - Tests: SQLite in-memory, CSRF disabled, rate limiter disabled, session-scoped app fixture. Cache invalidated between tests in conftest.py `clean_db` fixture.
