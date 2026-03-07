@@ -1,7 +1,7 @@
 # Zitatdatenbank - CLAUDE.md
 
 ## Project Overview
-Multilingual (DE/EN) Flask web application for browsing, searching, and managing ~524k quotes (24.6k German + 500k English). German quotes from MySQL dump (`zitate.sql`), English quotes from Kaggle CSV (`quotes.csv`).
+Multilingual (DE/EN) Flask web application for browsing, searching, and managing ~516k quotes (24.6k German + 500k English, after dedup). German quotes from MySQL dump (`zitate.sql`), English quotes from Kaggle CSV (`quotes.csv`).
 
 ## Tech Stack
 - Flask 3.1 with SQLAlchemy, Flask-Login, Flask-WTF, Flask-Limiter, Flask-Migrate
@@ -46,7 +46,7 @@ docker compose build && docker compose up -d
 ## CLI Commands
 - `flask import-quotes <path>` - Import quotes from SQL dump
 - `flask import-csv <path> --default-tags "tag1,tag2"` - Import quotes from CSV (columns: quote, author, category)
-- `flask cleanup-quotes` - Fix wiki markup, truncated authors/categories, remove duplicates
+- `flask cleanup-quotes` - Fix wiki markup, truncated authors/categories, non-Latin scripts, deduplication
 - `flask create-admin --username X --password Y` - Create admin user
 
 ## Key Patterns
@@ -61,7 +61,7 @@ docker compose build && docker compose up -d
 - Auth: Flask-Login with AdminUser model, env var auto-creation
 - Auto-import: Quotes imported on first startup if table is empty
 - Data files: Distributed as `data/data.tar.gz` (53MB), auto-extracted by entrypoint.sh on first start. Contains `zitate.sql` (German) and `quotes.csv` (English).
-- Auto-cleanup: Versioned (CLEANUP_VERSION in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Handles wiki markup, truncated authors, non-Latin scripts, sentence-like garbage authors, deduplication.
+- Auto-cleanup: Versioned (CLEANUP_VERSION in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Handles wiki markup, truncated authors, non-Latin scripts, sentence-like garbage authors, deduplication (CRC32-indexed text_hash column on MariaDB). All deletions (dedup, non-Latin, garbage) delete quote_tags FK entries first.
 - Auto-tag-migration: One-time migration of category → tags + default tags, gated by `tags_migrated` Setting
 - Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)

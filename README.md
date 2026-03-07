@@ -1,6 +1,6 @@
 # Zitatdatenbank
 
-A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~524,000 quotes (24.6k German + 500k English).
+A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~516,000 quotes (24.6k German + 500k English).
 
 ## Features
 
@@ -32,7 +32,7 @@ Optimized for 500k+ quotes with:
 |-------|--------------|
 | Index | 7ms |
 | Browse | 87ms |
-| Browse deep (page 26100) | 25ms |
+| Browse deep (page 25000+) | 25ms |
 | Authors | 20ms |
 | Tags | 3ms |
 | Search | 33–100ms |
@@ -47,7 +47,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The data files (`data/data.tar.gz`) are extracted automatically on first startup. The app then auto-imports ~24.6k German quotes from `zitate.sql` and ~500k English quotes from `quotes.csv`, runs data cleanup (wiki markup, garbage authors, deduplication), and creates an admin user from environment variables.
+The data files (`data/data.tar.gz`) are extracted automatically on first startup. The app then auto-imports ~24.6k German quotes from `zitate.sql` and ~500k English quotes from `quotes.csv`, runs versioned data cleanup (wiki markup, truncated authors, non-Latin scripts, deduplication via CRC32-indexed hashing), and creates an admin user from environment variables.
 
 ## Development
 
@@ -66,7 +66,7 @@ cd app && flask run
 
 - `flask import-quotes <path>` — Import quotes from SQL dump
 - `flask import-csv <path> --default-tags "tag1,tag2"` — Import quotes from CSV (columns: quote, author, category)
-- `flask cleanup-quotes` — Fix wiki markup, truncated authors/categories, remove duplicates
+- `flask cleanup-quotes` — Fix wiki markup, truncated authors/categories, non-Latin scripts, deduplication
 - `flask create-admin --username X --password Y` — Create admin user
 
 ## Admin Access
