@@ -54,7 +54,7 @@ def index():
 
 @main_bp.route('/browse')
 def browse():
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     author_filter = request.args.get('author', '').strip()
     tag_filter = request.args.get('tag', '').strip()
     sort = request.args.get('sort', 'newest')
@@ -200,7 +200,7 @@ def tags():
 @main_bp.route('/search')
 def search():
     q = request.args.get('q', '').strip()
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     per_page = int(get_cached_result('quotes_per_page',
         lambda: get_setting('quotes_per_page', str(QUOTES_PER_PAGE))))
 
@@ -293,8 +293,8 @@ def api_random():
 @main_bp.route('/api/quotes')
 @limiter.limit('30/minute')
 def api_quotes():
-    page = request.args.get('page', 1, type=int)
-    per_page = min(request.args.get('per_page', 20, type=int), 100)
+    page = max(1, request.args.get('page', 1, type=int))
+    per_page = max(1, min(request.args.get('per_page', 20, type=int), 100))
     author = request.args.get('author', '').strip()
     tag = request.args.get('tag', '').strip()
     q = request.args.get('q', '').strip()

@@ -4,7 +4,7 @@ import logging
 import os
 import secrets
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import click
 from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify
@@ -64,6 +64,9 @@ if not _db_uri:
         _db_uri = f'mysql+pymysql://{_db_user}:{_db_pass}@{_db_host}:{_db_port}/{_db_name}'
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 db.init_app(app)
 migrate.init_app(app, db)
@@ -123,7 +126,9 @@ def inject_globals():
 
 
 @app.after_request
-def set_csp_header(response: Response) -> Response:
+def set_security_headers(response: Response) -> Response:
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
     if 'text/html' in response.content_type:
         nonce = g.get('csp_nonce', '')
         response.headers['Content-Security-Policy'] = (
@@ -367,4 +372,4 @@ if os.environ.get('FLASK_TESTING') != '1':
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=os.environ.get('FLASK_DEBUG') == '1')

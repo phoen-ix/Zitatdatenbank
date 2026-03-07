@@ -53,18 +53,10 @@ def run_backup() -> tuple[bool, str]:
             if result.returncode != 0:
                 err = result.stderr.decode(errors='replace')[:300]
                 _backup_log('ERROR', f'mysqldump failed: {err}')
-                return False, f'mysqldump failed: {err}'
-            _backup_log('INFO', 'SQL dump created')
-
-            env_keys = ['DB_ROOT_PASSWORD', 'DB_NAME', 'DB_USER', 'DB_PASSWORD',
-                        'SECRET_KEY', 'ADMIN_USERNAME', 'ADMIN_PASSWORD']
-            env_lines = [f'{k}={os.environ.get(k, "")}' for k in env_keys if os.environ.get(k)]
-            with open(os.path.join(tmp, '.env'), 'w') as f:
-                f.write('\n'.join(env_lines) + '\n')
+                return False, 'Database backup failed'
 
             with tarfile.open(dest, 'w:gz') as tar:
                 tar.add(dump_path, arcname='dump.sql')
-                tar.add(os.path.join(tmp, '.env'), arcname='.env')
 
         _backup_log('SUCCESS', f'Backup created: {filename}')
         logger.info('Backup created: %s', filename)
@@ -88,22 +80,27 @@ def restore_backup(filename: str) -> tuple[bool, str]:
     try:
         with tempfile.TemporaryDirectory() as tmp:
             with tarfile.open(filepath, 'r:gz') as tar:
-                tar.extractall(tmp)
+                # Only extract expected files to prevent path traversal
+                for member in tar.getmembers():
+                    if member.name not in ('dump.sql', '.env') or '..' in member.name:
+                        continue
+                    tar.extract(member, tmp)
 
             dump_path = os.path.join(tmp, 'dump.sql')
             if not os.path.exists(dump_path):
                 return False, 'No dump.sql found in backup'
 
-            result = subprocess.run(
-                ['mysql', '-h', _db_host, '-P', _db_port,
-                 f'-u{_db_user}', f'-p{_db_pass}', _db_name],
-                stdin=open(dump_path, 'rb'),
-                stderr=subprocess.PIPE, timeout=300
-            )
+            with open(dump_path, 'rb') as dump_file:
+                result = subprocess.run(
+                    ['mariadb', '-h', _db_host, '-P', _db_port,
+                     f'-u{_db_user}', f'-p{_db_pass}', _db_name],
+                    stdin=dump_file,
+                    stderr=subprocess.PIPE, timeout=300
+                )
             if result.returncode != 0:
                 err = result.stderr.decode(errors='replace')[:300]
-                _backup_log('ERROR', f'Restore failed: {err}')
-                return False, f'Restore failed: {err}'
+                _backup_log('ERROR', 'Restore failed')
+                return False, 'Database restore failed'
 
         _backup_log('SUCCESS', f'Restored from: {filename}')
         return True, f'Restored from {filename}'

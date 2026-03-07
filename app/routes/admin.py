@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_from_directory
+import re
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_from_directory, abort
 from flask_login import login_required
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
@@ -260,8 +262,14 @@ def settings():
         tab = request.form.get('tab', 'general')
 
         if tab == 'general':
-            set_setting('quotes_per_page', request.form.get('quotes_per_page', '20'))
-            set_setting('site_name', request.form.get('site_name', 'Zitatdatenbank'))
+            try:
+                qpp = int(request.form.get('quotes_per_page', '20'))
+                qpp = max(5, min(qpp, 100))
+            except (ValueError, TypeError):
+                qpp = 20
+            set_setting('quotes_per_page', str(qpp))
+            site_name = request.form.get('site_name', 'Zitatdatenbank').strip()[:100]
+            set_setting('site_name', site_name or 'Zitatdatenbank')
             invalidate_stats_cache()
             flash(_('settings_saved'), 'success')
 
@@ -281,8 +289,8 @@ def settings():
                         db.session.commit()
                 if theme_name == 'custom':
                     for key in COLOR_KEYS:
-                        val = request.form.get(key, '')
-                        if val:
+                        val = request.form.get(key, '').strip()
+                        if val and re.match(r'^#[0-9a-fA-F]{6}$', val):
                             set_setting(f'custom_{key}', val)
                 elif theme_name in THEMES and not theme_changed:
                     defaults = THEMES[theme_name]
@@ -347,13 +355,21 @@ def backup_create():
     return redirect(url_for('admin.backup'))
 
 
+def _valid_backup_filename(filename):
+    return bool(re.match(r'^zitate_backup_[\d_-]+\.tar\.gz$', filename))
+
+
 @admin_bp.route('/backup/<filename>/download')
 def backup_download(filename):
+    if not _valid_backup_filename(filename):
+        abort(404)
     return send_from_directory(BACKUP_DIR, filename, as_attachment=True)
 
 
 @admin_bp.route('/backup/<filename>/restore', methods=['POST'])
 def backup_restore(filename):
+    if not _valid_backup_filename(filename):
+        abort(404)
     ok, msg = restore_backup(filename)
     if ok:
         invalidate_stats_cache()
@@ -365,6 +381,8 @@ def backup_restore(filename):
 
 @admin_bp.route('/backup/<filename>/delete', methods=['POST'])
 def backup_delete(filename):
+    if not _valid_backup_filename(filename):
+        abort(404)
     if delete_backup_file(filename):
         flash(_('backup_deleted'), 'success')
     else:

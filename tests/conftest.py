@@ -17,12 +17,14 @@ from extensions import db as _db
 @pytest.fixture(scope='session')
 def app():
     """Create application for testing."""
+    from extensions import limiter
     _app.config.update({
         'TESTING': True,
         'WTF_CSRF_ENABLED': False,
         'RATELIMIT_ENABLED': False,
         'SQLALCHEMY_DATABASE_URI': 'sqlite://',
     })
+    limiter.enabled = False
     with _app.app_context():
         _db.create_all()
     yield _app
