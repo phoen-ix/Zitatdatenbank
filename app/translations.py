@@ -136,6 +136,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'of': {'de': 'von', 'en': 'of'},
     'prev': {'de': 'Zurück', 'en': 'Prev'},
     'next': {'de': 'Weiter', 'en': 'Next'},
+    'go_to_page': {'de': 'Gehe zu Seite', 'en': 'Go to page'},
+    'go': {'de': 'Los', 'en': 'Go'},
     'footer_text': {'de': 'Zitatdatenbank', 'en': 'Quote Database'},
     'id': {'de': 'Nr.', 'en': 'No.'},
 }

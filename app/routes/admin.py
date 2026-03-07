@@ -3,10 +3,11 @@ from __future__ import annotations
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_login import login_required
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 
 from extensions import db
 from models import Quote, Tag, BackupLog, Setting, quote_tags
-from helpers import _, get_setting, set_setting, get_theme_overrides
+from helpers import _, get_setting, set_setting, get_theme_overrides, get_cached_stat, invalidate_stats_cache, get_cached_result, FastPagination
 from config import ADMIN_QUOTES_PER_PAGE, THEMES, DEFAULT_THEME, BACKUP_DIR, COLOR_KEYS, EFFECT_KEYS, ALL_THEME_KEYS
 from backup_service import run_backup, restore_backup, list_backups, delete_backup_file
 
@@ -36,13 +37,16 @@ def _sync_tags(quote, tag_string):
 
 @admin_bp.route('/')
 def dashboard():
-    total_quotes = db.session.query(func.count(Quote.id)).scalar() or 0
-    total_authors = db.session.query(func.count(func.distinct(Quote.author))).filter(
-        Quote.author != '', Quote.author.isnot(None)
-    ).scalar() or 0
-    total_tags = db.session.query(func.count(Tag.id)).scalar() or 0
+    total_quotes = get_cached_stat('total_quotes',
+        lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
+    total_authors = get_cached_stat('total_authors',
+        lambda: db.session.query(func.count(func.distinct(Quote.author))).filter(
+            Quote.author != '', Quote.author.isnot(None)
+        ).scalar() or 0)
+    total_tags = get_cached_stat('total_tags',
+        lambda: db.session.query(func.count(Tag.id)).scalar() or 0)
 
-    recent_quotes = Quote.query.order_by(Quote.id.desc()).limit(10).all()
+    recent_quotes = Quote.query.options(selectinload(Quote.tags)).order_by(Quote.id.desc()).limit(10).all()
 
     return render_template('admin/dashboard.html',
                            total_quotes=total_quotes,
@@ -55,28 +59,82 @@ def dashboard():
 def quotes():
     page = request.args.get('page', 1, type=int)
     q = request.args.get('q', '').strip()
+    cursor = request.args.get('cursor', type=int)
+    cursor_dir = request.args.get('_cursor_dir', 'next')
 
-    query = Quote.query
+    query = Quote.query.options(selectinload(Quote.tags))
     if q:
         like_pattern = f'%{q}%'
-        tag_subquery = db.session.query(quote_tags.c.quote_id).join(
-            Tag, Tag.id == quote_tags.c.tag_id
-        ).filter(Tag.name.ilike(like_pattern)).subquery()
-        query = query.filter(
-            db.or_(
-                Quote.text.ilike(like_pattern),
-                Quote.author.ilike(like_pattern),
-                Quote.id.in_(db.session.query(tag_subquery.c.quote_id)),
-            )
-        )
 
-    query = query.order_by(Quote.id.desc())
-    pagination = query.paginate(page=page, per_page=ADMIN_QUOTES_PER_PAGE, error_out=False)
+        # Use cached tag map for fast tag matching
+        def _load_tag_map():
+            rows = db.session.query(Tag.id, Tag.name).all()
+            return [(tid, name.lower()) for tid, name in rows]
+
+        tag_map = get_cached_result('tag_id_name_map', _load_tag_map)
+        q_lower = q.lower()
+        matching_tag_ids = [tid for tid, name in tag_map if q_lower in name]
+
+        conditions = []
+        if db.engine.dialect.name == 'sqlite':
+            conditions = [Quote.text.ilike(like_pattern), Quote.author.ilike(like_pattern)]
+        else:
+            conditions = [Quote.text.match(q), Quote.author.match(q)]
+
+        if matching_tag_ids:
+            tag_subquery = db.session.query(quote_tags.c.quote_id).filter(
+                quote_tags.c.tag_id.in_(matching_tag_ids)
+            ).subquery()
+            conditions.append(Quote.id.in_(db.session.query(tag_subquery.c.quote_id)))
+
+        query = query.filter(db.or_(*conditions))
+
+    # Keyset pagination when not searching (full table, ID-based)
+    use_keyset = not q
+
+    if use_keyset and cursor is not None:
+        going_forward = (cursor_dir != 'prev')
+        if going_forward:
+            items = query.filter(Quote.id < cursor).order_by(
+                Quote.id.desc()).limit(ADMIN_QUOTES_PER_PAGE + 1).all()
+        else:
+            items = query.filter(Quote.id > cursor).order_by(
+                Quote.id.asc()).limit(ADMIN_QUOTES_PER_PAGE + 1).all()
+            items = items[:ADMIN_QUOTES_PER_PAGE]
+            items.reverse()
+
+        if going_forward:
+            has_more = len(items) > ADMIN_QUOTES_PER_PAGE
+            items = items[:ADMIN_QUOTES_PER_PAGE]
+        else:
+            has_more = True
+
+        total = get_cached_stat('total_quotes',
+            lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
+        total_pages = max(1, (total + ADMIN_QUOTES_PER_PAGE - 1) // ADMIN_QUOTES_PER_PAGE)
+
+        pagination = FastPagination(items, page, ADMIN_QUOTES_PER_PAGE, has_more)
+        pagination.total = total
+        pagination.pages = total_pages
+    elif q:
+        # Search: use FastPagination to skip COUNT
+        query = query.order_by(Quote.id.desc())
+        offset = (page - 1) * ADMIN_QUOTES_PER_PAGE
+        items = query.offset(offset).limit(ADMIN_QUOTES_PER_PAGE + 1).all()
+        has_more = len(items) > ADMIN_QUOTES_PER_PAGE
+        items = items[:ADMIN_QUOTES_PER_PAGE]
+        pagination = FastPagination(items, page, ADMIN_QUOTES_PER_PAGE, has_more)
+    else:
+        # First page without cursor — use OFFSET
+        query = query.order_by(Quote.id.desc())
+        pagination = query.paginate(page=page, per_page=ADMIN_QUOTES_PER_PAGE, error_out=False)
+        items = pagination.items
 
     return render_template('admin/quotes.html',
                            pagination=pagination,
-                           quotes=pagination.items,
-                           search_query=q)
+                           quotes=items if use_keyset or q else pagination.items,
+                           search_query=q,
+                           use_keyset=use_keyset)
 
 
 @admin_bp.route('/quotes/add', methods=['GET', 'POST'])
@@ -96,6 +154,7 @@ def add_quote():
         db.session.flush()
         _sync_tags(quote, tags_str)
         db.session.commit()
+        invalidate_stats_cache()
         flash(_('save') + ' OK', 'success')
         return redirect(url_for('admin.quotes'))
 
@@ -133,17 +192,40 @@ def delete_quote(quote_id):
     if quote:
         db.session.delete(quote)
         db.session.commit()
+        invalidate_stats_cache()
         flash(_('delete_quote') + ' OK', 'success')
     return redirect(url_for('admin.quotes'))
 
 
 @admin_bp.route('/tags')
 def tags_list():
-    all_tags = db.session.query(
-        Tag.id, Tag.name, func.count(quote_tags.c.quote_id).label('count')
-    ).outerjoin(quote_tags, Tag.id == quote_tags.c.tag_id
-    ).group_by(Tag.id).order_by(Tag.name).all()
-    return render_template('admin/tags.html', tags=all_tags)
+    page = request.args.get('page', 1, type=int)
+    q = request.args.get('q', '').strip()
+    per_page = 50
+
+    # Cache the full tag list with counts (sorted by name for admin)
+    def _load_admin_tags():
+        return db.session.query(
+            Tag.id, Tag.name, func.count(quote_tags.c.quote_id).label('count')
+        ).outerjoin(quote_tags, Tag.id == quote_tags.c.tag_id
+        ).group_by(Tag.id).order_by(Tag.name).all()
+
+    all_tags = get_cached_result('admin_tags_with_counts', _load_admin_tags)
+
+    # Filter in Python (fast, list is small)
+    if q:
+        q_lower = q.lower()
+        filtered = [t for t in all_tags if q_lower in t[1].lower()]
+    else:
+        filtered = all_tags
+
+    total = len(filtered)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    tags_page = filtered[(page - 1) * per_page: page * per_page]
+
+    return render_template('admin/tags.html', tags=tags_page,
+                           page=page, total_pages=total_pages, total=total,
+                           search_query=q)
 
 
 @admin_bp.route('/tags/add', methods=['POST'])
@@ -156,6 +238,7 @@ def add_tag():
         else:
             db.session.add(Tag(name=name))
             db.session.commit()
+            invalidate_stats_cache()
             flash(_('save') + ' OK', 'success')
     return redirect(url_for('admin.tags_list'))
 
@@ -166,6 +249,7 @@ def delete_tag(tag_id):
     if tag:
         db.session.delete(tag)
         db.session.commit()
+        invalidate_stats_cache()
         flash(_('tag_deleted'), 'success')
     return redirect(url_for('admin.tags_list'))
 
@@ -178,6 +262,7 @@ def settings():
         if tab == 'general':
             set_setting('quotes_per_page', request.form.get('quotes_per_page', '20'))
             set_setting('site_name', request.form.get('site_name', 'Zitatdatenbank'))
+            invalidate_stats_cache()
             flash(_('settings_saved'), 'success')
 
         elif tab == 'themes':
@@ -210,6 +295,7 @@ def settings():
                             if s:
                                 db.session.delete(s)
                                 db.session.commit()
+            invalidate_stats_cache()
             flash(_('settings_saved'), 'success')
 
         elif tab == 'reset_theme':
@@ -221,6 +307,7 @@ def settings():
                 for row in rows:
                     db.session.delete(row)
                 db.session.commit()
+                invalidate_stats_cache()
                 flash(_('settings_saved'), 'success')
 
         return redirect(url_for('admin.settings'))
@@ -269,6 +356,7 @@ def backup_download(filename):
 def backup_restore(filename):
     ok, msg = restore_backup(filename)
     if ok:
+        invalidate_stats_cache()
         flash(_('backup_restored'), 'success')
     else:
         flash(msg, 'error')

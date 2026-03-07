@@ -12,7 +12,7 @@ from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash
 
 from extensions import db, csrf, migrate, limiter, login_manager
-from helpers import _, get_setting, get_active_theme, hex_to_rgb, is_dark_theme
+from helpers import _, get_setting, get_active_theme, hex_to_rgb, is_dark_theme, get_cached_result
 from config import DEFAULT_THEME
 
 
@@ -116,7 +116,8 @@ def inject_globals():
         theme_navbar_rgb=hex_to_rgb(theme.get('color_navbar', '#6b4c3b')),
         is_dark=is_dark_theme(theme),
         csp_nonce=nonce,
-        site_name=get_setting('site_name', 'Zitatdatenbank'),
+        site_name=get_cached_result('site_name',
+            lambda: get_setting('site_name', 'Zitatdatenbank')),
         current_lang=session.get('lang', 'de'),
     )
 
@@ -310,6 +311,26 @@ def _auto_migrate_tags():
     logger.info('Tag migration complete: %d quotes, %d tags created', len(all_quotes), len(tag_cache))
 
 
+def _ensure_fulltext_indexes():
+    """Create FULLTEXT indexes on quote table if not present (MariaDB only)."""
+    if db.engine.dialect.name == 'sqlite':
+        return
+    try:
+        result = db.session.execute(db.text(
+            "SELECT INDEX_NAME FROM information_schema.STATISTICS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND INDEX_NAME = 'ft_quote_text'"
+        ))
+        if result.fetchone():
+            return  # already exists
+        db.session.execute(db.text('ALTER TABLE quote ADD FULLTEXT INDEX ft_quote_text (text)'))
+        db.session.execute(db.text('ALTER TABLE quote ADD FULLTEXT INDEX ft_quote_author (author)'))
+        db.session.commit()
+        logger.info('Created FULLTEXT indexes on quote table')
+    except Exception as e:
+        logger.warning('Could not create FULLTEXT indexes: %s', e)
+        db.session.rollback()
+
+
 # Startup logic
 if os.environ.get('FLASK_TESTING') != '1':
     from sqlalchemy.exc import OperationalError
@@ -324,6 +345,7 @@ if os.environ.get('FLASK_TESTING') != '1':
                 _auto_import()
                 _auto_cleanup()
                 _auto_migrate_tags()
+                _ensure_fulltext_indexes()
             break
         except OperationalError:
             if attempt == max_retries:

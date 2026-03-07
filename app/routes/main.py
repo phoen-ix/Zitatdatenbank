@@ -4,29 +4,46 @@ import os
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from sqlalchemy import func, or_
+from sqlalchemy.orm import selectinload
 
 from extensions import db
 from models import Quote, Tag, quote_tags
-from helpers import _, get_setting
+from helpers import _, get_setting, get_cached_stat, get_cached_result, FastPagination
 from config import QUOTES_PER_PAGE
 
 main_bp = Blueprint('main', __name__)
 
 
+def _random_quote():
+    """Get a random quote efficiently without ORDER BY RAND()."""
+    if db.engine.dialect.name == 'sqlite':
+        return Quote.query.order_by(func.random()).first()
+
+    # Fast random: pick a random ID in the range
+    max_id = db.session.query(func.max(Quote.id)).scalar()
+    if not max_id:
+        return None
+    import random
+    for _ in range(5):
+        rand_id = random.randint(1, max_id)
+        quote = db.session.query(Quote).filter(Quote.id >= rand_id).first()
+        if quote:
+            return quote
+    return db.session.query(Quote).first()
+
+
 @main_bp.route('/')
 def index():
-    total_quotes = db.session.query(func.count(Quote.id)).scalar() or 0
-    total_authors = db.session.query(func.count(func.distinct(Quote.author))).filter(
-        Quote.author != '', Quote.author.isnot(None)
-    ).scalar() or 0
-    total_tags = db.session.query(func.count(Tag.id)).scalar() or 0
+    total_quotes = get_cached_stat('total_quotes',
+        lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
+    total_authors = get_cached_stat('total_authors',
+        lambda: db.session.query(func.count(func.distinct(Quote.author))).filter(
+            Quote.author != '', Quote.author.isnot(None)
+        ).scalar() or 0)
+    total_tags = get_cached_stat('total_tags',
+        lambda: db.session.query(func.count(Tag.id)).scalar() or 0)
 
-    random_quote = None
-    if total_quotes > 0:
-        if db.engine.dialect.name == 'sqlite':
-            random_quote = Quote.query.order_by(func.random()).first()
-        else:
-            random_quote = Quote.query.order_by(func.rand()).first()
+    random_quote = _random_quote() if total_quotes > 0 else None
 
     return render_template('index.html',
                            random_quote=random_quote,
@@ -41,92 +58,142 @@ def browse():
     author_filter = request.args.get('author', '').strip()
     tag_filter = request.args.get('tag', '').strip()
     sort = request.args.get('sort', 'newest')
-    per_page = int(get_setting('quotes_per_page', str(QUOTES_PER_PAGE)))
+    per_page = int(get_cached_result('quotes_per_page',
+        lambda: get_setting('quotes_per_page', str(QUOTES_PER_PAGE))))
+    cursor = request.args.get('cursor', type=int)
+    cursor_dir = request.args.get('_cursor_dir', 'next')  # 'next' or 'prev'
 
-    query = Quote.query
+    query = Quote.query.options(selectinload(Quote.tags))
     if author_filter:
         query = query.filter(Quote.author == author_filter)
     if tag_filter:
         query = query.filter(Quote.tags.any(Tag.name == tag_filter))
 
-    if sort == 'oldest':
-        query = query.order_by(Quote.id.asc())
-    elif sort == 'author_az':
-        query = query.order_by(Quote.author.asc(), Quote.id.asc())
-    elif sort == 'author_za':
-        query = query.order_by(Quote.author.desc(), Quote.id.asc())
-    else:  # newest
-        query = query.order_by(Quote.id.desc())
+    # Keyset pagination for ID-based sorts (no filters) — O(1) at any depth
+    use_keyset = sort in ('newest', 'oldest') and not author_filter and not tag_filter
 
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    if use_keyset and cursor is not None:
+        going_forward = (cursor_dir != 'prev')
+
+        if sort == 'newest':
+            if going_forward:
+                items = query.filter(Quote.id < cursor).order_by(
+                    Quote.id.desc()).limit(per_page + 1).all()
+            else:
+                # Going back: get items with higher IDs, ordered ASC, then reverse
+                items = query.filter(Quote.id > cursor).order_by(
+                    Quote.id.asc()).limit(per_page + 1).all()
+                items = items[:per_page]
+                items.reverse()
+        else:  # oldest
+            if going_forward:
+                items = query.filter(Quote.id > cursor).order_by(
+                    Quote.id.asc()).limit(per_page + 1).all()
+            else:
+                items = query.filter(Quote.id < cursor).order_by(
+                    Quote.id.desc()).limit(per_page + 1).all()
+                items = items[:per_page]
+                items.reverse()
+
+        if going_forward:
+            has_more = len(items) > per_page
+            items = items[:per_page]
+        else:
+            has_more = True  # We came from a next page, so there's always more ahead
+
+        # Get total count (cached) for page count display
+        total = get_cached_stat('total_quotes',
+            lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
+        total_pages = max(1, (total + per_page - 1) // per_page)
+
+        pagination = FastPagination(items, page, per_page, has_more)
+        pagination.total = total
+        pagination.pages = total_pages
+    else:
+        # OFFSET pagination for author sorts, filtered queries, or first page
+        if sort == 'oldest':
+            query = query.order_by(Quote.id.asc())
+        elif sort == 'author_az':
+            query = query.order_by(Quote.author.asc(), Quote.id.asc())
+        elif sort == 'author_za':
+            query = query.order_by(Quote.author.desc(), Quote.id.asc())
+        else:  # newest
+            query = query.order_by(Quote.id.desc())
+
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        items = pagination.items
 
     return render_template('browse.html',
                            pagination=pagination,
-                           quotes=pagination.items,
+                           quotes=items,
                            author_filter=author_filter,
                            tag_filter=tag_filter,
-                           sort=sort)
+                           sort=sort,
+                           use_keyset=use_keyset and not author_filter and not tag_filter)
 
 
 @main_bp.route('/browse/authors')
 def authors():
     page = request.args.get('page', 1, type=int)
     letter = request.args.get('letter', '').strip()
-
-    query = db.session.query(
-        Quote.author, func.count(Quote.id).label('count')
-    ).filter(
-        Quote.author != '', Quote.author.isnot(None)
-    ).group_by(Quote.author).order_by(Quote.author.asc())
-
-    if letter:
-        query = query.filter(Quote.author.like(f'{letter}%'))
-
-    all_results = query.all()
-    # Manual pagination for grouped query
     per_page = 50
-    total = len(all_results)
-    start = (page - 1) * per_page
-    end = start + per_page
-    authors_page = all_results[start:end]
 
-    # Get available first letters
-    letters_query = db.session.query(
-        func.upper(func.substr(Quote.author, 1, 1))
-    ).filter(
-        Quote.author != '', Quote.author.isnot(None)
-    ).distinct().order_by(func.upper(func.substr(Quote.author, 1, 1))).all()
-    letters = sorted(set(l[0] for l in letters_query if l[0] and l[0].isalpha()))
+    # Cache the full author list (small — only ~25 distinct authors with counts)
+    def _load_all_authors():
+        return db.session.query(
+            Quote.author, func.count(Quote.id).label('count')
+        ).filter(
+            Quote.author != '', Quote.author.isnot(None)
+        ).group_by(Quote.author).order_by(Quote.author.asc()).all()
+
+    all_authors = get_cached_result('all_authors', _load_all_authors)
+
+    # Filter by letter in Python (fast, list is small)
+    if letter:
+        filtered = [(a, c) for a, c in all_authors if a and a[0].upper() == letter.upper()]
+    else:
+        filtered = all_authors
+
+    total = len(filtered)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    authors_page = filtered[(page - 1) * per_page: page * per_page]
+
+    # Extract letters from cached data
+    letters = sorted(set(a[0].upper() for a, c in all_authors if a and a[0].isalpha()))
 
     return render_template('authors.html',
                            authors=authors_page,
                            letters=letters,
                            active_letter=letter,
                            page=page,
-                           total_pages=(total + per_page - 1) // per_page if total > 0 else 1,
+                           total_pages=total_pages,
                            total=total)
 
 
 @main_bp.route('/browse/tags')
 def tags():
     page = request.args.get('page', 1, type=int)
-
-    query = db.session.query(
-        Tag.name, func.count(quote_tags.c.quote_id).label('count')
-    ).join(quote_tags, Tag.id == quote_tags.c.tag_id
-    ).group_by(Tag.id).order_by(func.count(quote_tags.c.quote_id).desc())
-
-    all_results = query.all()
     per_page = 50
-    total = len(all_results)
-    start = (page - 1) * per_page
-    end = start + per_page
-    tags_page = all_results[start:end]
+
+    # Cache the full tag list with counts (small number of tags)
+    def _load_all_tags():
+        return db.session.query(
+            Tag.name, func.count(quote_tags.c.quote_id).label('count')
+        ).join(quote_tags, Tag.id == quote_tags.c.tag_id
+        ).group_by(Tag.id).order_by(
+            func.count(quote_tags.c.quote_id).desc()
+        ).all()
+
+    all_tags = get_cached_result('all_tags_with_counts', _load_all_tags)
+
+    total = len(all_tags)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    tags_page = all_tags[(page - 1) * per_page: page * per_page]
 
     return render_template('tags.html',
                            tags=tags_page,
                            page=page,
-                           total_pages=(total + per_page - 1) // per_page if total > 0 else 1,
+                           total_pages=total_pages,
                            total=total)
 
 
@@ -134,39 +201,53 @@ def tags():
 def search():
     q = request.args.get('q', '').strip()
     page = request.args.get('page', 1, type=int)
-    per_page = int(get_setting('quotes_per_page', str(QUOTES_PER_PAGE)))
+    per_page = int(get_cached_result('quotes_per_page',
+        lambda: get_setting('quotes_per_page', str(QUOTES_PER_PAGE))))
 
     if not q:
         return render_template('search_results.html', quotes=[], pagination=None, query='')
 
     like_pattern = f'%{q}%'
-    # Search in text, author, and tags
-    tag_subquery = db.session.query(quote_tags.c.quote_id).join(
-        Tag, Tag.id == quote_tags.c.tag_id
-    ).filter(Tag.name.ilike(like_pattern)).subquery()
+
+    # Find matching tag IDs from cache (microseconds vs SQL ILIKE scan)
+    def _load_tag_map():
+        rows = db.session.query(Tag.id, Tag.name).all()
+        return [(tid, name.lower()) for tid, name in rows]
+
+    tag_map = get_cached_result('tag_id_name_map', _load_tag_map)
+    q_lower = q.lower()
+    matching_tag_ids = [tid for tid, name in tag_map if q_lower in name]
+
+    # Build tag filter using exact IDs (fast index lookup)
+    tag_filter = None
+    if matching_tag_ids:
+        tag_subquery = db.session.query(quote_tags.c.quote_id).filter(
+            quote_tags.c.tag_id.in_(matching_tag_ids)
+        ).subquery()
+        tag_filter = Quote.id.in_(db.session.query(tag_subquery.c.quote_id))
 
     if db.engine.dialect.name == 'sqlite':
-        query = Quote.query.filter(
-            or_(
-                Quote.text.ilike(like_pattern),
-                Quote.author.ilike(like_pattern),
-                Quote.id.in_(db.session.query(tag_subquery.c.quote_id)),
-            )
-        )
+        conditions = [Quote.text.ilike(like_pattern), Quote.author.ilike(like_pattern)]
     else:
-        query = Quote.query.filter(
-            or_(
-                Quote.text.match(q),
-                Quote.author.ilike(like_pattern),
-                Quote.id.in_(db.session.query(tag_subquery.c.quote_id)),
-            )
-        )
+        # Use FULLTEXT indexes for both text and author
+        conditions = [Quote.text.match(q), Quote.author.match(q)]
 
-    query = query.order_by(Quote.id.asc())
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    if tag_filter is not None:
+        conditions.append(tag_filter)
+
+    query = Quote.query.options(selectinload(Quote.tags)).filter(
+        or_(*conditions)).order_by(Quote.id.asc())
+
+    # Fetch per_page+1 to detect next page (avoids expensive COUNT query)
+    offset = (page - 1) * per_page
+    items = query.offset(offset).limit(per_page + 1).all()
+    has_more = len(items) > per_page
+    items = items[:per_page]
+
+    pagination = FastPagination(items, page, per_page, has_more)
 
     return render_template('search_results.html',
-                           quotes=pagination.items,
+                           quotes=items,
                            pagination=pagination,
                            query=q)
 
@@ -180,10 +261,9 @@ def quote_detail(quote_id):
     # Get related quotes by same author
     related_by_author = []
     if quote.author:
-        related_by_author = Quote.query.filter(
+        related_by_author = Quote.query.options(selectinload(Quote.tags)).filter(
             Quote.author == quote.author, Quote.id != quote.id
-        ).order_by(func.random() if db.engine.dialect.name == 'sqlite' else func.rand()
-                   ).limit(5).all()
+        ).limit(5).all()
 
     return render_template('quote_detail.html',
                            quote=quote,
@@ -192,10 +272,7 @@ def quote_detail(quote_id):
 
 @main_bp.route('/api/random')
 def api_random():
-    if db.engine.dialect.name == 'sqlite':
-        quote = Quote.query.order_by(func.random()).first()
-    else:
-        quote = Quote.query.order_by(func.rand()).first()
+    quote = _random_quote()
 
     if not quote:
         return jsonify({'error': 'No quotes available'}), 404

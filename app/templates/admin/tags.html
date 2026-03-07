@@ -24,6 +24,17 @@
     </div>
 </div>
 
+<form method="GET" action="{{ url_for('admin.tags_list') }}" class="mb-3">
+    <div class="input-group">
+        <input type="text" class="form-control" name="q" value="{{ search_query }}" placeholder="{{ _('search_placeholder') }}">
+        <button class="btn btn-outline-secondary" type="submit">
+            <i class="bi bi-search"></i>
+        </button>
+    </div>
+</form>
+
+<p class="text-muted">{{ total }} {{ _('tags') }}</p>
+
 <div class="table-responsive">
     <table class="table table-hover">
         <thead>
@@ -53,4 +64,26 @@
         </tbody>
     </table>
 </div>
+
+{% if total_pages > 1 %}
+<nav>
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.tags_list', page=page-1, q=search_query) }}">{{ _('prev') }}</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+        {% if p == page or (p <= 3) or (p >= total_pages - 2) or (p >= page - 2 and p <= page + 2) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.tags_list', page=p, q=search_query) }}">{{ p }}</a>
+        </li>
+        {% elif p == 4 or p == total_pages - 3 %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+        {% endfor %}
+        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.tags_list', page=page+1, q=search_query) }}">{{ _('next') }}</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}

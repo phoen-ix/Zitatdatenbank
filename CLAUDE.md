@@ -34,7 +34,7 @@ docker compose build && docker compose up -d
 - `app/config.py` - 14 theme definitions (5 static + 9 animated), COLOR_KEYS, EFFECT_KEYS, constants
 - `app/translations.py` - DE/EN translation dictionaries
 - `app/models.py` - Quote, Tag, quote_tags, AdminUser, Setting, BackupLog
-- `app/helpers.py` - Settings CRUD, translation helper, theme utilities, per-theme override loading
+- `app/helpers.py` - Settings CRUD, translation helper, theme utilities, per-theme override loading, stats/result caching, FastPagination
 - `app/import_service.py` - SQL parser + data import logic
 - `app/backup_service.py` - Backup create/restore/prune
 - `app/cleanup_service.py` - Quote data cleanup (wiki markup, truncated authors, dedup)
@@ -64,4 +64,5 @@ docker compose build && docker compose up -d
 - Auto-tag-migration: One-time migration of category → tags + default tags, gated by `tags_migrated` Setting
 - Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
-- Tests: SQLite in-memory, CSRF disabled, session-scoped app fixture
+- Performance: In-memory cache (`_stats_cache` in helpers.py, 5-min TTL) for stats, theme, tags, settings. `invalidate_stats_cache()` clears all caches on data/settings changes. `FastPagination` skips COUNT queries. Keyset pagination on browse (cursor param). `selectinload(Quote.tags)` for batch tag loading. FULLTEXT MATCH for search on MariaDB.
+- Tests: SQLite in-memory, CSRF disabled, session-scoped app fixture. Cache invalidated between tests in conftest.py `clean_db` fixture.

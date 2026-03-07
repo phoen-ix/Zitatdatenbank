@@ -33,7 +33,9 @@
             <i class="bi bi-x"></i> Clear
         </a>
         {% endif %}
+        {% if pagination.total is not none %}
         <span class="text-muted">{{ pagination.total }} {{ _('quotes_count') }}</span>
+        {% endif %}
     </div>
 </div>
 
@@ -63,9 +65,51 @@
 </div>
 {% endfor %}
 
+{% if use_keyset and quotes %}
+{% set base_args = {'sort': sort} %}
+<nav aria-label="Page navigation" class="mt-3">
+    <ul class="pagination justify-content-center mb-0">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            {% if pagination.page > 1 %}
+            <a class="page-link" href="{{ url_for('main.browse', page=pagination.page - 1, cursor=quotes[0].id, sort=sort, _cursor_dir='prev') }}">
+                &laquo; {{ _('prev') }}
+            </a>
+            {% else %}
+            <span class="page-link">&laquo; {{ _('prev') }}</span>
+            {% endif %}
+        </li>
+        <li class="page-item">
+            <span class="page-link">
+                {{ _('page') }} {{ pagination.page }}{% if pagination.pages %} / {{ pagination.pages }}{% endif %}
+            </span>
+        </li>
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            {% if pagination.has_next %}
+            <a class="page-link" href="{{ url_for('main.browse', page=pagination.page + 1, cursor=quotes[-1].id, sort=sort) }}">
+                {{ _('next') }} &raquo;
+            </a>
+            {% else %}
+            <span class="page-link">{{ _('next') }} &raquo;</span>
+            {% endif %}
+        </li>
+    </ul>
+    {% if pagination.pages and pagination.pages > 1 %}
+    <div class="text-center mt-2">
+        <form method="GET" action="{{ url_for('main.browse') }}" class="d-inline-flex align-items-center gap-2">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <label class="text-muted small">{{ _('go_to_page') }}</label>
+            <input type="number" name="page" class="form-control form-control-sm" style="width:80px"
+                   min="1" max="{{ pagination.pages }}" value="{{ pagination.page }}">
+            <button class="btn btn-sm btn-outline-primary" type="submit">{{ _('go') }}</button>
+        </form>
+    </div>
+    {% endif %}
+</nav>
+{% else %}
 {% with kwargs={'author': author_filter, 'tag': tag_filter, 'sort': sort} %}
 {% include '_pagination.html' %}
 {% endwith %}
+{% endif %}
 
 {% else %}
 <div class="alert alert-info">{{ _('no_quotes_found') }}</div>

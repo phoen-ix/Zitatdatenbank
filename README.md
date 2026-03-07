@@ -1,14 +1,14 @@
 # Zitatdatenbank
 
-A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~24,623 German quotes.
+A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~524,000 quotes (24.6k German + 500k English).
 
 ## Features
 
-- **Browse** quotes with pagination, filtering by author/category, and sorting
-- **Search** full-text across quotes, authors, and categories
-- **Author & Category** listings with quote counts and alphabetical navigation
+- **Browse** quotes with pagination, filtering by author/tag, and sorting
+- **Search** full-text across quotes, authors, and tags
+- **Author & Tag** listings with quote counts and alphabetical navigation
 - **Random Quote** on the landing page with one-click refresh
-- **Admin Panel** with quote CRUD, settings management, and backup/restore
+- **Admin Panel** with quote CRUD, tag management, settings, and backup/restore
 - **14 Themes** - 5 static (Klassisch, Modern, Dunkel, Wald, Ozean) + 9 animated (Hacker Terminal, Schreibmaschine, Neon Glow, Pergament, Vaporwave, Nordlichter, Unterwasser, Kosmos, Feuer)
 - **Per-theme customization** - all 11 colors and 2 effect values (typing speed, particle count) editable per theme in admin settings
 - **Typing animation** on animated themes with per-theme cursor styles and configurable speed
@@ -16,6 +16,27 @@ A multilingual (DE/EN) web application for browsing, searching, and managing a c
 - **Line break rendering** - `//` in quote text displayed as proper line breaks
 - **Bilingual** German/English UI with one-click language switching
 - **REST API** for random quotes (`/api/random`)
+
+## Performance
+
+Optimized for 500k+ quotes with:
+
+- **Keyset (cursor-based) pagination** — browse pages load in constant time at any depth (page 26100 = 25ms, same as page 1)
+- **In-memory caching** (5-min TTL) for stats, theme, tags, settings — eliminates 15+ DB queries per request
+- **FastPagination** — skips expensive COUNT queries using N+1 fetch
+- **FULLTEXT indexes** on text and author columns (MariaDB)
+- **selectinload** for tags — batches N+1 tag queries into a single IN query
+- **Cached tag name→ID map** — search finds matching tags in microseconds instead of SQL ILIKE scan
+
+| Route | Response Time |
+|-------|--------------|
+| Index | 7ms |
+| Browse | 87ms |
+| Browse deep (page 26100) | 25ms |
+| Authors | 20ms |
+| Tags | 3ms |
+| Search | 33–100ms |
+| Quote detail | 16ms |
 
 ## Quick Start with Docker
 
@@ -41,6 +62,13 @@ FLASK_TESTING=1 python3 -m pytest tests/ -v
 export SECRET_KEY=dev-secret FLASK_TESTING=1 SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
 cd app && flask run
 ```
+
+## CLI Commands
+
+- `flask import-quotes <path>` — Import quotes from SQL dump
+- `flask import-csv <path> --default-tags "tag1,tag2"` — Import quotes from CSV (columns: quote, author, category)
+- `flask cleanup-quotes` — Fix wiki markup, truncated authors/categories, remove duplicates
+- `flask create-admin --username X --password Y` — Create admin user
 
 ## Admin Access
 

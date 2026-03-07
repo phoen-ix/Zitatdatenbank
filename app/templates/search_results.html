@@ -20,7 +20,9 @@
 </form>
 
 {% if quotes %}
+{% if pagination.total is not none %}
 <p class="text-muted mb-3">{{ pagination.total }} {{ _('quotes_count') }}</p>
+{% endif %}
 {% for quote in quotes %}
 <div class="card mb-3">
     <div class="card-body">

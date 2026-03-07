@@ -25,7 +25,7 @@ class Quote(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None),
                            onupdate=lambda: datetime.now(UTC).replace(tzinfo=None))
 
-    tags = db.relationship('Tag', secondary=quote_tags, back_populates='quotes', lazy='selectin')
+    tags = db.relationship('Tag', secondary=quote_tags, back_populates='quotes', lazy='select')
 
     def __repr__(self) -> str:
         return f'<Quote {self.id}>'
