@@ -89,13 +89,24 @@ Default credentials are set via `ADMIN_USERNAME` and `ADMIN_PASSWORD` environmen
 
 All theme colors and effects are customizable per-theme through the admin settings UI. Animated themes include typing animations and particle effects (bubbles, stars, embers) with configurable speed and count.
 
+## Security
+
+- **CSP** with nonce-based script-src, `frame-ancestors 'none'`, `object-src 'none'`
+- **X-Frame-Options: DENY**, **X-Content-Type-Options: nosniff**
+- **CSRF** protection on all forms (Flask-WTF)
+- **Rate limiting** on login (10/min) and API endpoints (30–60/min) with `X-RateLimit-*` headers
+- **Session security** — HttpOnly, SameSite=Lax cookies, 8h timeout
+- **Input validation** — numeric bounds, hex color format, filename whitelist, page clamping
+- **Open redirect prevention** on login `next` parameter
+- **Safe backup restore** — tar member whitelist, no credentials in backup files
+
 ## API
 
-All endpoints return JSON and are rate-limited.
+All endpoints return JSON and are rate-limited. Rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`) are included in every response.
 
 ### `GET /api/random`
 
-Returns a random quote.
+Returns a random quote (30 requests/minute).
 
 ```json
 {"id": 42, "text": "The only way...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
@@ -103,12 +114,12 @@ Returns a random quote.
 
 ### `GET /api/quotes`
 
-Browse and search quotes with pagination.
+Browse and search quotes with pagination (30 requests/minute).
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `page` | Page number | 1 |
-| `per_page` | Results per page (max 100) | 20 |
+| `per_page` | Results per page (1–100) | 20 |
 | `author` | Filter by exact author name | — |
 | `tag` | Filter by tag name | — |
 | `q` | Full-text search in text and author | — |
@@ -119,7 +130,7 @@ Browse and search quotes with pagination.
 
 ### `GET /api/quotes/<id>`
 
-Returns a single quote by ID.
+Returns a single quote by ID (60 requests/minute).
 
 ```json
 {"id": 42, "text": "The only way...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
