@@ -391,3 +391,39 @@ def test_nlbr_filter_escapes_xss(client, app, make_quote):
     assert response.status_code == 200
     assert b'<script>' not in response.data
     assert b'&lt;script&gt;' in response.data
+
+
+def test_quote_detail_null_author(client, app, make_quote):
+    """Quote detail should handle None author without crashing."""
+    with app.app_context():
+        from models import Quote
+        from extensions import db as _db
+        q = Quote(text='No author quote', author=None)
+        _db.session.add(q)
+        _db.session.commit()
+        qid = q.id
+    response = client.get(f'/quote/{qid}')
+    assert response.status_code == 200
+
+
+def test_login_javascript_redirect_blocked(client, app, make_admin):
+    """Login should not redirect to javascript: URLs via ?next=."""
+    with app.app_context():
+        make_admin(username='admin', password='secret')
+    response = client.post('/login?next=javascript:alert(1)', data={
+        'username': 'admin', 'password': 'secret',
+    })
+    assert response.status_code == 302
+    location = response.headers['Location']
+    assert 'javascript' not in location
+
+
+def test_login_valid_next_redirect(client, app, make_admin):
+    """Login should redirect to valid relative next URL."""
+    with app.app_context():
+        make_admin(username='admin', password='secret')
+    response = client.post('/login?next=/admin/quotes', data={
+        'username': 'admin', 'password': 'secret',
+    })
+    assert response.status_code == 302
+    assert '/admin/quotes' in response.headers['Location']

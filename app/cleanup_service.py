@@ -997,7 +997,7 @@ def _clean_category(category: str) -> str:
         return _complete_sprichw(category)
 
     # Truncated categories: <=3 chars starting with uppercase -> clear
-    if len(category) <= 3 and category[0].isupper():
+    if 0 < len(category) <= 3 and category[0].isupper():
         return ''
 
     return category

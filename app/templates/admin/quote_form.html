@@ -16,7 +16,7 @@
 
             <div class="mb-3">
                 <label for="author" class="form-label">{{ _('author') }}</label>
-                <input type="text" class="form-control" id="author" name="author" value="{{ form_data.get('author', '') or (quote.author if quote else '') }}">
+                <input type="text" class="form-control" id="author" name="author" value="{{ form_data.get('author', '') or ((quote.author or '') if quote else '') }}">
             </div>
 
             <div class="mb-3">

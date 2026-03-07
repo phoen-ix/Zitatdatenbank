@@ -27,8 +27,8 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
             next_page = request.args.get('next')
-            # Prevent open redirect — only allow relative URLs
-            if next_page and urlparse(next_page).netloc == '':
+            # Prevent open redirect — only allow relative path URLs
+            if next_page and urlparse(next_page).netloc == '' and next_page.startswith('/'):
                 return redirect(next_page)
             return redirect(url_for('admin.dashboard'))
         flash(_('login_failed'), 'error')

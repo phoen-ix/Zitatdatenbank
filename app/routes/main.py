@@ -15,6 +15,15 @@ from config import QUOTES_PER_PAGE
 main_bp = Blueprint('main', __name__)
 
 
+def _get_per_page() -> int:
+    """Get quotes_per_page setting, safely defaulting on corrupt values."""
+    try:
+        return int(get_cached_result('quotes_per_page',
+            lambda: get_setting('quotes_per_page', str(QUOTES_PER_PAGE))))
+    except (ValueError, TypeError):
+        return QUOTES_PER_PAGE
+
+
 def _escape_like(q: str) -> str:
     """Escape LIKE metacharacters so % and _ are matched literally."""
     return q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
@@ -28,7 +37,7 @@ def _sanitize_fulltext(q: str) -> str:
 def _random_quote():
     """Get a random quote efficiently without ORDER BY RAND()."""
     if db.engine.dialect.name == 'sqlite':
-        return Quote.query.order_by(func.random()).first()
+        return Quote.query.options(selectinload(Quote.tags)).order_by(func.random()).first()
 
     # Fast random: pick a random ID in the range
     max_id = db.session.query(func.max(Quote.id)).scalar()
@@ -37,10 +46,11 @@ def _random_quote():
     import random
     for _ in range(5):
         rand_id = random.randint(1, max_id)
-        quote = db.session.query(Quote).filter(Quote.id >= rand_id).first()
+        quote = db.session.query(Quote).options(
+            selectinload(Quote.tags)).filter(Quote.id >= rand_id).first()
         if quote:
             return quote
-    return db.session.query(Quote).first()
+    return db.session.query(Quote).options(selectinload(Quote.tags)).first()
 
 
 @main_bp.route('/')
@@ -69,8 +79,7 @@ def browse():
     author_filter = request.args.get('author', '').strip()
     tag_filter = request.args.get('tag', '').strip()
     sort = request.args.get('sort', 'newest')
-    per_page = int(get_cached_result('quotes_per_page',
-        lambda: get_setting('quotes_per_page', str(QUOTES_PER_PAGE))))
+    per_page = _get_per_page()
     cursor = request.args.get('cursor', type=int)
     if cursor is not None and cursor < 1:
         cursor = None
@@ -211,11 +220,11 @@ def tags():
 
 
 @main_bp.route('/search')
+@limiter.limit('30/minute')
 def search():
     q = request.args.get('q', '').strip()
     page = max(1, request.args.get('page', 1, type=int))
-    per_page = int(get_cached_result('quotes_per_page',
-        lambda: get_setting('quotes_per_page', str(QUOTES_PER_PAGE))))
+    per_page = _get_per_page()
 
     if not q:
         return render_template('search_results.html', quotes=[], pagination=None, query='')
@@ -270,7 +279,7 @@ def search():
 
 @main_bp.route('/quote/<int:quote_id>')
 def quote_detail(quote_id):
-    quote = db.session.get(Quote, quote_id)
+    quote = db.session.get(Quote, quote_id, options=[selectinload(Quote.tags)])
     if not quote:
         return render_template('quote_detail.html', quote=None), 404
 
@@ -352,7 +361,7 @@ def api_quotes():
 @main_bp.route('/api/quotes/<int:quote_id>')
 @limiter.limit('60/minute')
 def api_quote_detail(quote_id):
-    quote = db.session.get(Quote, quote_id)
+    quote = db.session.get(Quote, quote_id, options=[selectinload(Quote.tags)])
     if not quote:
         return jsonify({'error': 'Quote not found'}), 404
     return jsonify(_quote_to_dict(quote))

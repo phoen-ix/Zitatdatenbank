@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timedelta
 
 import click
-from urllib.parse import urlparse
+from urllib.parse import quote as urlquote, urlparse
 
 from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify, render_template
 from markupsafe import Markup, escape
@@ -63,7 +63,7 @@ if not _db_uri:
         _db_host = os.environ.get('DB_HOST', 'localhost')
         _db_port = os.environ.get('DB_PORT', '3306')
         _db_name = os.environ.get('DB_NAME', 'zitatdatenbank')
-        _db_uri = f'mysql+pymysql://{_db_user}:{_db_pass}@{_db_host}:{_db_port}/{_db_name}'
+        _db_uri = f'mysql+pymysql://{urlquote(_db_user, safe="")}:{urlquote(_db_pass, safe="")}@{_db_host}:{_db_port}/{_db_name}'
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
@@ -123,7 +123,7 @@ def internal_error_handler(e):
 def ratelimit_handler(e):
     if request.is_json or request.path.startswith('/api/'):
         return jsonify({'status': 'error', 'detail': str(e.description)}), 429
-    flash('Too many requests. Please wait and try again.', 'error')
+    flash(_('rate_limited'), 'error')
     ref = request.referrer
     if ref and urlparse(ref).netloc not in ('', request.host):
         ref = None

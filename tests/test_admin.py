@@ -348,3 +348,32 @@ def test_login_open_redirect_blocked(client, app, make_admin):
     assert response.status_code == 302
     location = response.headers['Location']
     assert 'evil.com' not in location
+
+
+def test_admin_edit_quote_null_author_no_none(admin_client, app, make_quote):
+    """Edit form should show empty string for None author, not literal 'None'."""
+    with app.app_context():
+        from models import Quote
+        from extensions import db
+        q = Quote(text='Null author', author=None)
+        db.session.add(q)
+        db.session.commit()
+        qid = q.id
+    response = admin_client.get(f'/admin/quotes/{qid}/edit')
+    assert response.status_code == 200
+    assert b'value="None"' not in response.data
+
+
+def test_admin_theme_override_validates_color(admin_client, app):
+    """Theme color overrides should reject non-hex values."""
+    with app.app_context():
+        response = admin_client.post('/admin/settings', data={
+            'tab': 'themes',
+            'theme_name': 'klassisch',
+            'color_navbar': 'red; } body { background: url(evil) }',
+        }, follow_redirects=True)
+        assert response.status_code == 200
+
+        from helpers import get_setting
+        # Malicious value should NOT be saved
+        assert get_setting('theme_klassisch_color_navbar') is None

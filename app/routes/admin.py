@@ -26,18 +26,22 @@ def require_login():
 def _sync_tags(quote, tag_string):
     """Parse comma-separated tag string and sync tags to quote."""
     tag_names = [t.strip() for t in tag_string.split(',') if t.strip()]
-    # Get or create tags
     new_tags = []
     for name in tag_names:
         tag = Tag.query.filter_by(name=name).first()
         if not tag:
-            tag = Tag(name=name)
-            db.session.add(tag)
+            # Use savepoint so IntegrityError only rolls back the tag insert,
+            # not the entire transaction (which may include a quote being added/edited)
+            nested = db.session.begin_nested()
             try:
-                db.session.flush()
+                tag = Tag(name=name)
+                db.session.add(tag)
+                nested.commit()
             except IntegrityError:
-                db.session.rollback()
+                nested.rollback()
                 tag = Tag.query.filter_by(name=name).first()
+                if not tag:
+                    continue
         new_tags.append(tag)
     quote.tags = new_tags
 
@@ -253,13 +257,15 @@ def add_tag():
         if existing:
             flash(_('tag_exists'), 'error')
         else:
+            nested = db.session.begin_nested()
             try:
                 db.session.add(Tag(name=name))
+                nested.commit()
                 db.session.commit()
                 invalidate_stats_cache()
                 flash(_('save') + ' OK', 'success')
             except IntegrityError:
-                db.session.rollback()
+                nested.rollback()
                 flash(_('tag_exists'), 'error')
     return redirect(url_for('admin.tags_list'))
 
@@ -314,6 +320,14 @@ def settings():
                     defaults = THEMES[theme_name]
                     for key in ALL_THEME_KEYS:
                         val = request.form.get(key, '').strip()
+                        # Validate: colors must be hex, effects must be numeric
+                        if key in COLOR_KEYS and val and not re.match(r'^#[0-9a-fA-F]{6}$', val):
+                            continue
+                        if key in EFFECT_KEYS and val:
+                            try:
+                                int(val)
+                            except ValueError:
+                                continue
                         if val and val != defaults.get(key, ''):
                             set_setting(f'theme_{theme_name}_{key}', val, commit=False)
                         elif val == defaults.get(key, ''):
@@ -390,6 +404,9 @@ def backup_restore(filename):
         abort(404)
     ok, msg = restore_backup(filename)
     if ok:
+        # Reset cleanup version so data quality fixes re-run on restored data
+        set_setting('cleanup_version', '0')
+        set_setting('tags_migrated', '')
         invalidate_stats_cache()
         flash(_('backup_restored'), 'success')
     else:
