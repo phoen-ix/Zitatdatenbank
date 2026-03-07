@@ -195,6 +195,94 @@ def _fuzzy_match(a: str, b: str) -> bool:
     return a_lower in b_lower or b_lower in a_lower
 
 
+def import_quotes_from_csv(csv_path: str, default_tag_names: list[str] | None = None) -> int:
+    """Import quotes from a CSV file (columns: quote, author, category).
+
+    category is treated as comma-separated tags. default_tag_names are added to every quote.
+    Returns count of imported quotes.
+    """
+    import csv
+    from extensions import db
+    from models import Quote, Tag
+
+    # Get or create default tags
+    default_tags = []
+    for name in (default_tag_names or []):
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+            db.session.flush()
+        default_tags.append(tag)
+
+    # Build tag cache
+    tag_cache: dict[str, Tag] = {t.name: t for t in Tag.query.all()}
+
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        header = next(reader)  # skip header
+        logger.info('CSV header: %s', header)
+
+        count = 0
+        batch_size = 1000
+        for row in reader:
+            if len(row) < 2:
+                continue
+            text = row[0].strip()
+            if not text:
+                continue
+
+            author = row[1].strip() if len(row) > 1 else ''
+            # Clean author: remove work title after comma if present
+            # e.g. "Author Name, Book Title" -> "Author Name"
+            if ', ' in author:
+                parts = author.split(', ', 1)
+                # If the part after comma starts with uppercase and looks like a title
+                # (contains spaces or >20 chars), strip it
+                if len(parts[1]) > 15 or parts[1][0:1].isupper():
+                    author = parts[0]
+            # Truncate overly long authors (malformed CSV rows)
+            if len(author) > 200:
+                author = author[:200]
+
+            cat_str = row[2].strip() if len(row) > 2 else ''
+
+            quote = Quote(text=text, author=author)
+            db.session.add(quote)
+            db.session.flush()
+
+            # Assign default tags
+            quote.tags = list(default_tags)
+
+            # Parse category tags
+            if cat_str:
+                for tag_name in cat_str.split(', '):
+                    tag_name = tag_name.strip()
+                    if not tag_name or len(tag_name) > 100:
+                        continue
+                    if tag_name not in tag_cache:
+                        # Check DB (case-insensitive for MariaDB compat)
+                        existing = Tag.query.filter_by(name=tag_name).first()
+                        if existing:
+                            tag_cache[tag_name] = existing
+                        else:
+                            tag = Tag(name=tag_name)
+                            db.session.add(tag)
+                            db.session.flush()
+                            tag_cache[tag_name] = tag
+                    if tag_cache[tag_name] not in quote.tags:
+                        quote.tags.append(tag_cache[tag_name])
+
+            count += 1
+            if count % batch_size == 0:
+                db.session.commit()
+                logger.info('Imported %d quotes from CSV', count)
+
+    db.session.commit()
+    logger.info('CSV import complete: %d quotes', count)
+    return count
+
+
 def import_quotes_from_sql(sql_path: str) -> int:
     """Parse the SQL file and import quotes into the database. Returns count of imported quotes."""
     from extensions import db

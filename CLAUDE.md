@@ -1,7 +1,7 @@
 # Zitatdatenbank - CLAUDE.md
 
 ## Project Overview
-Multilingual (DE/EN) Flask web application for browsing, searching, and managing ~24,623 German quotes. Data imported from MySQL dump (`zitate.sql`).
+Multilingual (DE/EN) Flask web application for browsing, searching, and managing ~524k quotes (24.6k German + 500k English). German quotes from MySQL dump (`zitate.sql`), English quotes from Kaggle CSV (`quotes.csv`).
 
 ## Tech Stack
 - Flask 3.1 with SQLAlchemy, Flask-Login, Flask-WTF, Flask-Limiter, Flask-Migrate
@@ -45,12 +45,13 @@ docker compose build && docker compose up -d
 
 ## CLI Commands
 - `flask import-quotes <path>` - Import quotes from SQL dump
+- `flask import-csv <path> --default-tags "tag1,tag2"` - Import quotes from CSV (columns: quote, author, category)
 - `flask cleanup-quotes` - Fix wiki markup, truncated authors/categories, remove duplicates
 - `flask create-admin --username X --password Y` - Create admin user
 
 ## Key Patterns
 - Translation: `_('key')` function, language set via session
-- Tags: Many-to-many (Quote ↔ Tag via quote_tags). Replaces old category field. Admin-managed, public-filterable. Default tags: "Deutsch", "German", "Quelle: Zitatdatenbank" on all quotes. Categories auto-migrated to tags on first startup (`tags_migrated` Setting).
+- Tags: Many-to-many (Quote ↔ Tag via quote_tags). Replaces old category field. Admin-managed, public-filterable. German quotes tagged "Deutsch", "German", "Quelle: Zitatdatenbank". English quotes tagged "English", "Englisch", "Source: Kaggle". Categories auto-migrated to tags on first startup (`tags_migrated` Setting).
 - Themes: 14 themes (5 static, 9 animated with particles/typing effects), all customizable per-theme via admin settings
 - Theme overrides stored in Setting table as `theme_{name}_{field}`, merged with defaults at load time
 - 11 color fields + 2 effect fields (typing_speed, particle_count) per theme
@@ -61,6 +62,6 @@ docker compose build && docker compose up -d
 - Auto-import: Quotes imported on first startup if table is empty
 - Auto-cleanup: Versioned (CLEANUP_VERSION=16 in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump
 - Auto-tag-migration: One-time migration of category → tags + default tags, gated by `tags_migrated` Setting
-- Credits page: `/credits` route with CC BY-SA 3.0 license info + datenbörse.net source attribution, linked from footer
+- Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
 - Tests: SQLite in-memory, CSRF disabled, session-scoped app fixture

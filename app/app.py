@@ -153,6 +153,20 @@ def import_quotes_cmd(path):
     click.echo(f'Imported {count} quotes.')
 
 
+@app.cli.command('import-csv')
+@click.argument('path')
+@click.option('--default-tags', default='', help='Comma-separated default tags for all imported quotes')
+def import_csv_cmd(path, default_tags):
+    """Import quotes from a CSV file (columns: quote, author, category)."""
+    from import_service import import_quotes_from_csv
+    if not os.path.exists(path):
+        click.echo(f'File not found: {path}')
+        return
+    tag_names = [t.strip() for t in default_tags.split(',') if t.strip()] if default_tags else []
+    count = import_quotes_from_csv(path, tag_names)
+    click.echo(f'Imported {count} quotes.')
+
+
 @app.cli.command('cleanup-quotes')
 def cleanup_quotes_cmd():
     """Clean up quote data: fix wiki markup, truncated authors, duplicates."""

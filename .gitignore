@@ -28,6 +28,10 @@ build/
 # Root SQL dump (canonical copy is in data/)
 /zitate.sql
 
+# Large data files
+*.csv
+analyze*.py
+
 # Claude Code
 .claude/
 

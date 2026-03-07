@@ -118,8 +118,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'credits_title': {'de': 'Credits & Lizenzinformationen', 'en': 'Credits & License Information'},
     'credits_source': {'de': 'Datenquelle', 'en': 'Data Source'},
     'credits_source_text': {
-        'de': 'Die Zitate in dieser Datenbank stammen aus der Zitatdatenbank von datenbörse.net.',
-        'en': 'The quotes in this database originate from the Zitatdatenbank (quote database) on datenbörse.net.',
+        'de': 'Die deutschen Zitate in dieser Datenbank stammen aus der Zitatdatenbank von datenbörse.net.',
+        'en': 'The German quotes in this database originate from the Zitatdatenbank (quote database) on datenbörse.net.',
+    },
+    'credits_source2_text': {
+        'de': 'Die englischen Zitate stammen aus dem Quotes 500K Datensatz auf Kaggle.',
+        'en': 'The English quotes originate from the Quotes 500K dataset on Kaggle.',
     },
     'credits_license': {'de': 'Lizenz', 'en': 'License'},
     'credits_license_text': {
