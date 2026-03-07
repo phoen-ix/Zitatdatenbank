@@ -66,6 +66,7 @@ docker compose build && docker compose up -d
 - Auto-tag-migration: One-time migration of category → tags + default tags, gated by `tags_migrated` Setting
 - Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
 - Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
+- Random quote: Uniform distribution via COUNT + random OFFSET (not `>= rand_id` which biases toward quotes after ID gaps). Index page sends `Cache-Control: no-store` to prevent browser caching.
 - Performance: In-memory cache (`_stats_cache` in helpers.py, 5-min TTL) for stats, theme, tags, settings. `invalidate_stats_cache()` clears all caches on data/settings changes. `FastPagination` skips COUNT queries. Keyset pagination on browse (cursor param). `selectinload(Quote.tags)` for batch tag loading. FULLTEXT MATCH for search on MariaDB.
 - REST API: `/api/random`, `/api/quotes` (browse/search/filter), `/api/quotes/<id>`. Rate-limited (30/min browse, 60/min detail). Returns JSON with id, text, author, tags. `X-RateLimit-*` headers on all responses. `/search` also rate-limited (30/min).
 - Security headers: CSP with nonce-based script-src, X-Frame-Options: DENY, X-Content-Type-Options: nosniff. CSRF on all forms.

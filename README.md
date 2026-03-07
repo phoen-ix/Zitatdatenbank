@@ -1,5 +1,149 @@
 # Zitatdatenbank
 
+Eine mehrsprachige (DE/EN) Webanwendung zum Durchsuchen, Suchen und Verwalten einer Sammlung von ~516.000 Zitaten (24.600 deutsche + 500.000 englische).
+
+---
+
+## Funktionen
+
+- **Durchsuchen** von Zitaten mit Paginierung, Filterung nach Autor/Tag und Sortierung
+- **Volltextsuche** in Zitaten, Autoren und Tags
+- **Autoren- & Tag-Listen** mit Zitatanzahl und alphabetischer Navigation
+- **Zufallszitat** auf der Startseite mit Ein-Klick-Aktualisierung
+- **Admin-Panel** mit Zitat-CRUD, Tag-Verwaltung, Einstellungen und Backup/Wiederherstellung
+- **14 Themes** — 5 statische (Klassisch, Modern, Dunkel, Wald, Ozean) + 9 animierte (Hacker Terminal, Schreibmaschine, Neon Glow, Pergament, Vaporwave, Nordlichter, Unterwasser, Kosmos, Feuer)
+- **Anpassung pro Theme** — alle 11 Farben und 2 Effektwerte (Tippgeschwindigkeit, Partikelanzahl) pro Theme im Admin-Bereich einstellbar
+- **Tipp-Animation** bei animierten Themes mit konfigurierbarem Cursor und Geschwindigkeit
+- **Partikeleffekte** — Blasen, Sterne, Funken usw. mit konfigurierbarer Anzahl
+- **Zeilenumbruch-Darstellung** — `//` im Zitattext wird als Zeilenumbruch angezeigt
+- **Zweisprachig** — Deutsch/Englisch-Oberfläche mit Ein-Klick-Sprachwechsel
+- **REST-API** für Zitate mit Filterung, Suche und Paginierung
+
+## Performance
+
+Optimiert für 500.000+ Zitate mit:
+
+- **Keyset-Paginierung (cursorbasiert)** — Seiten laden in konstanter Zeit, egal wie tief (Seite 26100 = 25ms, wie Seite 1)
+- **In-Memory-Cache** (5 Min. TTL) für Statistiken, Theme, Tags, Einstellungen — eliminiert 15+ DB-Abfragen pro Request
+- **FastPagination** — überspringt teure COUNT-Abfragen mit N+1-Fetch
+- **FULLTEXT-Indizes** auf Text- und Autorspalten (MariaDB)
+- **selectinload** für Tags — bündelt N+1 Tag-Abfragen in eine einzige IN-Abfrage
+- **Gecachte Tag-Name→ID-Map** — Suche findet passende Tags in Mikrosekunden statt SQL-ILIKE-Scan
+
+| Route | Antwortzeit |
+|-------|-------------|
+| Startseite | 7ms |
+| Durchsuchen | 87ms |
+| Durchsuchen tief (Seite 25000+) | 25ms |
+| Autoren | 20ms |
+| Tags | 3ms |
+| Suche | 33–100ms |
+| Zitatdetail | 16ms |
+
+## Schnellstart mit Docker
+
+```bash
+cp .env.example .env
+# .env mit eigenen Werten bearbeiten (SECRET_KEY, Passwörter)
+
+docker compose up -d
+```
+
+Die Datendateien (`data/data.tar.gz`) werden beim ersten Start automatisch entpackt. Die App importiert dann automatisch ~24.600 deutsche Zitate aus `zitate.sql` und ~500.000 englische Zitate aus `quotes.csv`, führt eine versionierte Datenbereinigung durch (Wiki-Markup, abgeschnittene Autoren, nicht-lateinische Schriftzeichen, Deduplizierung via CRC32-indiziertem Hashing) und erstellt einen Admin-Benutzer aus Umgebungsvariablen.
+
+## Entwicklung
+
+```bash
+pip install -r requirements.txt
+
+# Tests ausführen
+FLASK_TESTING=1 python3 -m pytest tests/ -v
+
+# Lokal starten
+export SECRET_KEY=dev-secret FLASK_TESTING=1 SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
+cd app && flask run
+```
+
+## CLI-Befehle
+
+- `flask import-quotes <pfad>` — Zitate aus SQL-Dump importieren
+- `flask import-csv <pfad> --default-tags "tag1,tag2"` — Zitate aus CSV importieren (Spalten: quote, author, category)
+- `flask cleanup-quotes` — Wiki-Markup, abgeschnittene Autoren/Kategorien, nicht-lateinische Schriftzeichen und Duplikate bereinigen
+- `flask create-admin --username X --password Y` — Admin-Benutzer erstellen
+
+## Admin-Zugang
+
+Zugangsdaten werden über die Umgebungsvariablen `ADMIN_USERNAME` und `ADMIN_PASSWORD` gesetzt. Das Admin-Panel ist unter `/admin` erreichbar.
+
+## Themes
+
+| Statisch | Animiert |
+|----------|----------|
+| Klassisch | Hacker Terminal |
+| Modern | Schreibmaschine |
+| Dunkel | Neon Glow |
+| Wald | Pergament |
+| Ozean | Vaporwave |
+| | Nordlichter |
+| | Unterwasser |
+| | Kosmos |
+| | Feuer |
+
+Alle Theme-Farben und -Effekte sind pro Theme über die Admin-Einstellungen anpassbar. Animierte Themes beinhalten Tipp-Animationen und Partikeleffekte (Blasen, Sterne, Funken) mit konfigurierbarer Geschwindigkeit und Anzahl.
+
+## Sicherheit
+
+- **CSP** mit Nonce-basierter script-src, `frame-ancestors 'none'`, `object-src 'none'`
+- **X-Frame-Options: DENY**, **X-Content-Type-Options: nosniff**
+- **CSRF**-Schutz auf allen Formularen (Flask-WTF)
+- **Rate-Limiting** bei Login (10/Min.), Suche (30/Min.) und API-Endpunkten (30–60/Min.) mit `X-RateLimit-*`-Headern
+- **Session-Sicherheit** — HttpOnly, SameSite=Lax, Secure-Cookies, 8h Timeout
+- **Eingabevalidierung** — numerische Grenzen, Hex-Farb-Regex für alle Theme-Overrides, Effektwert-Validierung, Dateinamen-Whitelist, Seitenzahl-Begrenzung, FULLTEXT-Operator-Bereinigung, LIKE-Wildcard-Escaping
+- **Open-Redirect-Schutz** beim Login-`next`-Parameter (nur Pfade) und `Referer`-basierten Weiterleitungen (Same-Host-Prüfung)
+- **Sichere Backups** — schließt App-State-Tabellen aus, Tar lehnt Symlinks ab, Restore setzt Cleanup-/Migrationsstatus zurück
+- **Datenintegrität** — `ON DELETE CASCADE` auf Foreign Keys, Savepoint-basierte `IntegrityError`-Behandlung bei gleichzeitigen Schreibvorgängen
+- **Transaktionssicherheit** — `begin_nested()`-Savepoints verhindern, dass Tag-Race-Conditions umgebende Transaktionen zurückrollen
+
+## API
+
+Alle Endpunkte liefern JSON und sind rate-limitiert. Rate-Limit-Header (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`) sind in jeder Antwort enthalten.
+
+### `GET /api/random`
+
+Gibt ein zufälliges Zitat zurück (30 Anfragen/Minute).
+
+```json
+{"id": 42, "text": "Der einzige Weg...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
+```
+
+### `GET /api/quotes`
+
+Zitate durchsuchen und suchen mit Paginierung (30 Anfragen/Minute).
+
+| Parameter | Beschreibung | Standard |
+|-----------|-------------|----------|
+| `page` | Seitennummer | 1 |
+| `per_page` | Ergebnisse pro Seite (1–100) | 20 |
+| `author` | Nach exaktem Autorennamen filtern | — |
+| `tag` | Nach Tag-Name filtern | — |
+| `q` | Volltextsuche in Text und Autor | — |
+
+```json
+{"quotes": [...], "page": 1, "per_page": 20, "has_next": true, "has_prev": false}
+```
+
+### `GET /api/quotes/<id>`
+
+Gibt ein einzelnes Zitat nach ID zurück (60 Anfragen/Minute).
+
+```json
+{"id": 42, "text": "Der einzige Weg...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
+```
+
+---
+
+# Zitatdatenbank (English)
+
 A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~516,000 quotes (24.6k German + 500k English).
 
 ## Features

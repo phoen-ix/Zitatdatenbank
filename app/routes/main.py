@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, make_response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 
@@ -35,22 +35,18 @@ def _sanitize_fulltext(q: str) -> str:
 
 
 def _random_quote():
-    """Get a random quote efficiently without ORDER BY RAND()."""
+    """Get a truly random quote with uniform distribution."""
     if db.engine.dialect.name == 'sqlite':
         return Quote.query.options(selectinload(Quote.tags)).order_by(func.random()).first()
 
-    # Fast random: pick a random ID in the range
-    max_id = db.session.query(func.max(Quote.id)).scalar()
-    if not max_id:
+    # Uniform random via COUNT + OFFSET (avoids ID-gap bias of >= approach)
+    count = db.session.query(func.count(Quote.id)).scalar()
+    if not count:
         return None
     import random
-    for _ in range(5):
-        rand_id = random.randint(1, max_id)
-        quote = db.session.query(Quote).options(
-            selectinload(Quote.tags)).filter(Quote.id >= rand_id).first()
-        if quote:
-            return quote
-    return db.session.query(Quote).options(selectinload(Quote.tags)).first()
+    offset = random.randint(0, count - 1)
+    return db.session.query(Quote).options(
+        selectinload(Quote.tags)).order_by(Quote.id).offset(offset).limit(1).first()
 
 
 @main_bp.route('/')
@@ -66,11 +62,13 @@ def index():
 
     random_quote = _random_quote() if total_quotes > 0 else None
 
-    return render_template('index.html',
+    response = make_response(render_template('index.html',
                            random_quote=random_quote,
                            total_quotes=total_quotes,
                            total_authors=total_authors,
-                           total_tags=total_tags)
+                           total_tags=total_tags))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @main_bp.route('/browse')
