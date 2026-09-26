@@ -51,6 +51,8 @@ docker compose up -d
 
 Die Datendateien (`data/data.tar.gz`) werden beim ersten Start automatisch entpackt. Die App importiert dann automatisch ~24.600 deutsche Zitate aus `zitate.sql` und ~500.000 englische Zitate aus `quotes.csv`, führt eine versionierte Datenbereinigung durch (Wiki-Markup, abgeschnittene Autoren, nicht-lateinische Schriftzeichen, Deduplizierung via CRC32-indiziertem Hashing) und erstellt einen Admin-Benutzer aus Umgebungsvariablen.
 
+**MariaDB-Upgrade bestehender Installationen:** Der `db`-Service setzt `MARIADB_AUTO_UPGRADE=1`, daher wird `mariadb-data/` beim ersten Start mit einer neueren Major-Version automatisch aktualisiert. Vorher einen geprüften Dump anlegen (`docker compose exec db mariadb-dump ...`) — ein Major-Upgrade lässt sich nicht zurückrollen.
+
 ## Entwicklung
 
 ```bash
@@ -192,6 +194,8 @@ docker compose up -d
 ```
 
 The data files (`data/data.tar.gz`) are extracted automatically on first startup. The app then auto-imports ~24.6k German quotes from `zitate.sql` and ~500k English quotes from `quotes.csv`, runs versioned data cleanup (wiki markup, truncated authors, non-Latin scripts, deduplication via CRC32-indexed hashing), and creates an admin user from environment variables.
+
+**Upgrading an existing install to a newer MariaDB major:** the `db` service sets `MARIADB_AUTO_UPGRADE=1`, so the container upgrades `mariadb-data/` in place on its first start. Take a verified dump first (`docker compose exec db mariadb-dump ...`) — a major-version upgrade cannot be rolled back.
 
 ## Development
 

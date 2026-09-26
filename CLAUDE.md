@@ -5,7 +5,7 @@ Multilingual (DE/EN) Flask web application for browsing, searching, and managing
 
 ## Tech Stack
 - Flask 3.1 with SQLAlchemy, Flask-Login, Flask-WTF, Flask-Limiter, Flask-Migrate
-- MariaDB 11 (production), SQLite in-memory (tests)
+- MariaDB 12.3 (production), SQLite in-memory (tests)
 - Bootstrap 5.3 self-hosted, Bootstrap Icons
 - Docker + docker-compose
 
