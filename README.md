@@ -42,7 +42,10 @@ Optimiert für 500.000+ Zitate mit:
 
 ## Schnellstart mit Docker
 
+Voraussetzung: [Git LFS](https://git-lfs.com). `data/data.tar.gz` liegt in Git LFS; ohne git-lfs enthält der Klon nur eine kleine Pointer-Datei, und der `web`-Container bricht beim Start mit einem entsprechenden Hinweis ab.
+
 ```bash
+git lfs install && git lfs pull   # einmalig nach dem Klonen: holt data/data.tar.gz (~53 MB)
 cp .env.example .env
 # .env mit eigenen Werten bearbeiten (SECRET_KEY, Passwörter)
 
@@ -186,7 +189,10 @@ Optimized for 500k+ quotes with:
 
 ## Quick Start with Docker
 
+Requires [Git LFS](https://git-lfs.com): `data/data.tar.gz` is stored in Git LFS. Without git-lfs the clone only contains a small pointer file, and the `web` container exits on startup with a message saying so.
+
 ```bash
+git lfs install && git lfs pull   # once after cloning: fetches data/data.tar.gz (~53 MB)
 cp .env.example .env
 # Edit .env with your values (SECRET_KEY, passwords)
 

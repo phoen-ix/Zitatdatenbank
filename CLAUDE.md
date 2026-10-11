@@ -61,7 +61,7 @@ docker compose build && docker compose up -d
 - Typing animation on animated themes processes all `.quote-text` elements, handles `<br>` nodes
 - Auth: Flask-Login with AdminUser model, env var auto-creation. Login rate-limited (10/min). Open redirect prevention on `next` param (requires relative path starting with `/`). Session: 8h timeout, HttpOnly, SameSite=Lax, Secure cookies.
 - Auto-import: Quotes imported on first startup if table is empty
-- Data files: Distributed as `data/data.tar.gz` (53MB), auto-extracted by entrypoint.sh on first start. Contains `zitate.sql` (German) and `quotes.csv` (English).
+- Data files: Distributed as `data/data.tar.gz` (53MB), auto-extracted by entrypoint.sh on first start. Contains `zitate.sql` (German) and `quotes.csv` (English). Stored in **Git LFS** (`.gitattributes`): clones need `git lfs install && git lfs pull`; without it the file is a 133-byte pointer and entrypoint.sh exits with a message saying so (data is required, so the `web` container keeps restarting until the real file is there). Not baked into the image (`.dockerignore` excludes `*.tar.gz`); it arrives through the `./data:/data` bind mount.
 - Auto-cleanup: Versioned (CLEANUP_VERSION in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Handles wiki markup, truncated authors, non-Latin scripts, sentence-like garbage authors, deduplication (CRC32-indexed text_hash column on MariaDB). All deletions (dedup, non-Latin, garbage) delete quote_tags FK entries first.
 - Auto-tag-migration: One-time migration of category → tags + default tags, gated by `tags_migrated` Setting
 - Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
