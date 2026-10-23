@@ -121,12 +121,13 @@ async function open(ctx: BrowserContext, url: string): Promise<Page> {
 }
 
 /** `clipAbove`: the page from the top down to just above that element.
- * `fullPage` stops at 2400 CSS px. `clipX`: only that element's width (+8 px
+ * `fit`: the viewport down to just above the first of these elements that the
+ * viewport's bottom edge cuts. `fullPage` stops at 2400 CSS px. `clipX`: only that element's width (+8 px
  * each side) - keeps the gradient-heavy theme shots under 400 KB. */
 async function shoot(
   page: Page,
   name: string,
-  opts: { fullPage?: boolean; clipAbove?: string; clipX?: string } = {},
+  opts: { fullPage?: boolean; clipAbove?: string; fit?: string; clipX?: string } = {},
 ): Promise<void> {
   // Finishes the typing animation and lets toasts time out.
   await page.clock.runFor(60_000)
@@ -141,6 +142,13 @@ async function shoot(
     const box = await page.locator(opts.clipAbove).first().boundingBox()
     if (!box) throw new Error(`[docs] ${opts.clipAbove} is not on the page`)
     clip = { x: 0, y: 0, width, height: Math.min(2400, Math.floor(box.y) - 8) }
+  } else if (opts.fit) {
+    const vh = page.viewportSize()!.height
+    const tops = await page.locator(opts.fit).evaluateAll(
+      (els, vh) => els.map((e) => e.getBoundingClientRect()).filter((r) => r.bottom > vh).map((r) => r.top),
+      vh,
+    )
+    clip = { x: 0, y: 0, width, height: Math.floor(Math.min(vh, ...tops)) }
   } else if (opts.fullPage) {
     const height = await page.evaluate(() => document.documentElement.scrollHeight)
     clip = { x: 0, y: 0, width, height: Math.min(2400, height) }
@@ -186,7 +194,7 @@ test('home on a phone', async ({ browser }, info) => {
     await expect(page.getByText('Random Quote')).toBeVisible()
     await expect(page.locator('.navbar-toggler')).toBeVisible()
     await expect(page.locator('.quote-text')).toContainText('Instead of cursing the darkness')
-    await shoot(page, 'public-home.mobile')
+    await shoot(page, 'public-home.mobile', { fullPage: true })
   } finally {
     await ctx.close()
   }
@@ -196,7 +204,7 @@ test('browse', async () => {
   const page = await open(guest, '/browse')
   await heading(page, 'Browse Quotes')
   await expect(page.locator('.quote-text').first()).toBeVisible()
-  await shoot(page, 'public-browse')
+  await shoot(page, 'public-browse', { fit: '.card' })
 })
 
 test('browse by tag', async () => {
@@ -224,7 +232,7 @@ test('search', async () => {
   const page = await open(guest, '/search?q=life')
   await heading(page, /Search results for/)
   await expect(page.locator('.quote-text').first()).toBeVisible()
-  await shoot(page, 'public-search')
+  await shoot(page, 'public-search', { fit: '.card' })
 })
 
 test('search without results', async () => {
@@ -269,7 +277,7 @@ test('admin quotes', async () => {
   const page = await open(admin, '/admin/quotes')
   await heading(page, 'Manage Quotes')
   await expect(page.locator('table tbody tr').first()).toBeVisible()
-  await shoot(page, 'admin-quotes')
+  await shoot(page, 'admin-quotes', { fit: 'tbody tr' })
 })
 
 test('admin edit quote', async () => {
@@ -282,7 +290,7 @@ test('admin edit quote', async () => {
 test('admin tags', async () => {
   const page = await open(admin, '/admin/tags')
   await heading(page, 'Manage Tags')
-  await shoot(page, 'admin-tags')
+  await shoot(page, 'admin-tags', { fit: 'tbody tr' })
 })
 
 test('admin settings', async () => {

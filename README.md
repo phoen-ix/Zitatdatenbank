@@ -23,7 +23,7 @@ Eine mehrsprachige (DE/EN) Webanwendung zum Durchsuchen, Suchen und Verwalten ei
 
 ## Screenshots
 
-<img src="docs/screenshots/public-browse.png" alt="Zitate durchsuchen: Liste mit Sortierung, Tags und Paginierung" width="800">
+<img src="docs/screenshots/public-browse.png" alt="Zitate durchsuchen: Liste mit Sortierung und Tags" width="800">
 <img src="docs/screenshots/public-quote.png" alt="Zitatdetail mit Tags und weiteren Zitaten desselben Autors" width="800">
 <img src="docs/screenshots/admin-settings-themes.png" alt="Admin-Einstellungen: Theme-Auswahl mit Farb- und Effektanpassung" width="800">
 <img src="docs/screenshots/theme-kosmos.png" alt="Zitatdetail im animierten Theme Kosmos" width="800">
@@ -89,10 +89,14 @@ python3 -m pytest
 
 # Lokal starten (SQLite unter instance/dev.db, Admin admin/admin)
 cd app
-export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db ADMIN_PASSWORD=admin
+export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
+python -m flask create-admin --username admin --password admin   # erster Start legt die Tabellen an
+export FLASK_TESTING=1   # ab hier ohne Startsequenz (sonst überschreibt die Tag-Migration die Tags der CSV-Zitate)
 python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
 python -m flask run      # http://localhost:5000
 ```
+
+Diese Datenbank immer mit `FLASK_TESTING=1` starten: Ohne die Variable ersetzt die einmalige Tag-Migration beim nächsten Start die Tags aller importierten Zitate durch Deutsch/German/Quelle: Zitatdatenbank.
 
 `python -m flask`, nicht `flask`: Wegen `app/__init__.py` findet das `flask`-Skript die Module in `app/` nicht.
 
@@ -203,7 +207,7 @@ A multilingual (DE/EN) web application for browsing, searching, and managing a c
 
 ## Screenshots
 
-<img src="docs/screenshots/public-browse.png" alt="Browse quotes: list with sorting, tags and pagination" width="800">
+<img src="docs/screenshots/public-browse.png" alt="Browse quotes: list with sorting and tags" width="800">
 <img src="docs/screenshots/public-quote.png" alt="Quote detail with tags and more quotes by the same author" width="800">
 <img src="docs/screenshots/admin-settings-themes.png" alt="Admin settings: theme picker with color and effect customization" width="800">
 <img src="docs/screenshots/theme-kosmos.png" alt="Quote detail in the animated Kosmos theme" width="800">
@@ -269,10 +273,14 @@ python3 -m pytest
 
 # Run locally (SQLite in instance/dev.db, admin admin/admin)
 cd app
-export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db ADMIN_PASSWORD=admin
+export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
+python -m flask create-admin --username admin --password admin   # first start creates the tables
+export FLASK_TESTING=1   # skip the startup sequence from here on (its tag migration would overwrite the CSV quotes' tags)
 python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
 python -m flask run      # http://localhost:5000
 ```
+
+Always start this database with `FLASK_TESTING=1`: without it, the one-time tag migration replaces the tags of every imported quote with Deutsch/German/Quelle: Zitatdatenbank on the next start.
 
 Use `python -m flask`, not `flask`: because of `app/__init__.py` the `flask` script cannot import the modules in `app/`.
 

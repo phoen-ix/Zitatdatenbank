@@ -9,7 +9,9 @@ self-hosted, gunicorn in Docker. README.md (German first, then English) is the u
 ```bash
 python3 -m pytest                       # tests (conftest sets FLASK_TESTING, SQLite in-memory)
 # local dev server, run in app/ (SQLite in instance/dev.db, admin admin/admin)
-export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db ADMIN_PASSWORD=admin
+export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
+python -m flask create-admin --username admin --password admin   # startup sequence creates the tables
+export FLASK_TESTING=1                  # from now on: no startup sequence → no tag migration (see Invariants)
 python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
 python -m flask run
 # docs screenshots: throwaway stack + Playwright tour (needs `npm ci` + chromium in e2e/)
