@@ -1,0 +1,10 @@
+# Docs-screenshot overlay, a THIRD file over docker-compose.e2e.yml
+# (scripts/docs-screenshots.sh). It only seeds the gunicorn worker's random
+# generator (e2e/docs/gunicorn_seed.py), so the "random" quote on the home page
+# is the same on every run and the screenshots stay byte-identical.
+services:
+  web:
+    volumes:
+      - ./e2e/docs/gunicorn_seed.py:/docs/gunicorn_seed.py:ro
+    command: ["gunicorn", "-c", "/docs/gunicorn_seed.py", "--bind", "0.0.0.0:5000", "--workers", "1",
+              "--preload", "--timeout", "300", "--no-control-socket", "app:app"]

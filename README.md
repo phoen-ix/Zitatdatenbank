@@ -1,5 +1,7 @@
 # Zitatdatenbank
 
+<img src="docs/screenshots/public-home.de.png" alt="Startseite: Zufallszitat, Statistik und Schnellzugriffe (deutsche Oberfläche)" width="800">
+
 Eine mehrsprachige (DE/EN) Webanwendung zum Durchsuchen, Suchen und Verwalten einer Sammlung von ~516.000 Zitaten (24.600 deutsche + 500.000 englische). Läuft als Docker-Stack (Flask + MariaDB); CI führt die Tests, `pip-audit` und die Screenshot-Tour als Render-Check aus.
 
 ---
@@ -18,6 +20,25 @@ Eine mehrsprachige (DE/EN) Webanwendung zum Durchsuchen, Suchen und Verwalten ei
 - **Zeilenumbruch-Darstellung** — `//` im Zitattext wird als Zeilenumbruch angezeigt
 - **Zweisprachig** — Deutsch/Englisch-Oberfläche mit Ein-Klick-Sprachwechsel
 - **REST-API** für Zitate mit Filterung, Suche und Paginierung
+
+## Screenshots
+
+<img src="docs/screenshots/public-browse.png" alt="Zitate durchsuchen: Liste mit Sortierung, Tags und Paginierung" width="800">
+<img src="docs/screenshots/public-quote.png" alt="Zitatdetail mit Tags und weiteren Zitaten desselben Autors" width="800">
+<img src="docs/screenshots/admin-settings-themes.png" alt="Admin-Einstellungen: Theme-Auswahl mit Farb- und Effektanpassung" width="800">
+<img src="docs/screenshots/theme-kosmos.png" alt="Zitatdetail im animierten Theme Kosmos" width="800">
+
+Alle Seiten und alle 14 Themes: [Screenshot-Galerie](docs/screenshots/README.md) (englische Oberfläche, die Startseite auch auf Deutsch).
+
+Die Bilder erzeugt die Screenshot-Tour (`e2e/docs/`, Playwright): Sie baut das Image, startet einen Wegwerf-Stack (Compose-Projekt `zitatdatenbank_docs`, nur `127.0.0.1:${PORT_BASE:-25600}`, ohne Bind-Mounts, also ohne `data/data.tar.gz`), importiert ~100 Beispielzitate aus `e2e/docs/fixtures/` und fotografiert jede Seite:
+
+```bash
+cd e2e && npm ci && npx playwright install chromium && cd ..
+scripts/docs-screenshots.sh                  # schreibt docs/screenshots/*.png
+PORT_BASE=25600 scripts/docs-screenshots.sh /tmp/shots   # anderer Port / Zielordner
+```
+
+Der Workflow **Docs screenshots** (Actions, manuell) liefert dieselben Bilder als Artefakt.
 
 ## Performance
 
@@ -161,6 +182,8 @@ Healthcheck (nicht rate-limitiert): `200 {"status": "ok", "checks": {"database":
 
 # Zitatdatenbank (English)
 
+<img src="docs/screenshots/public-home.png" alt="Home page: random quote, statistics and shortcuts (English UI)" width="800">
+
 A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~516,000 quotes (24.6k German + 500k English). Runs as a Docker stack (Flask + MariaDB); CI runs the tests, `pip-audit` and the screenshot tour as a render check.
 
 ## Features
@@ -177,6 +200,25 @@ A multilingual (DE/EN) web application for browsing, searching, and managing a c
 - **Line break rendering** - `//` in quote text displayed as proper line breaks
 - **Bilingual** German/English UI with one-click language switching
 - **REST API** for quotes with filtering, search, and pagination
+
+## Screenshots
+
+<img src="docs/screenshots/public-browse.png" alt="Browse quotes: list with sorting, tags and pagination" width="800">
+<img src="docs/screenshots/public-quote.png" alt="Quote detail with tags and more quotes by the same author" width="800">
+<img src="docs/screenshots/admin-settings-themes.png" alt="Admin settings: theme picker with color and effect customization" width="800">
+<img src="docs/screenshots/theme-kosmos.png" alt="Quote detail in the animated Kosmos theme" width="800">
+
+Every page and all 14 themes: [screenshot gallery](docs/screenshots/README.md).
+
+The images come from the screenshot tour (`e2e/docs/`, Playwright). It builds the image, starts a throwaway stack (compose project `zitatdatenbank_docs`, `127.0.0.1:${PORT_BASE:-25600}` only, no bind mounts, so `data/data.tar.gz` is never used), imports ~100 sample quotes from `e2e/docs/fixtures/` and photographs every page:
+
+```bash
+cd e2e && npm ci && npx playwright install chromium && cd ..
+scripts/docs-screenshots.sh                  # writes docs/screenshots/*.png
+PORT_BASE=25600 scripts/docs-screenshots.sh /tmp/shots   # other port / output dir
+```
+
+The **Docs screenshots** workflow (Actions, manual) returns the same images as an artifact.
 
 ## Performance
 

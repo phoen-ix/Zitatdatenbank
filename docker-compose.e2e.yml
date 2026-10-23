@@ -1,0 +1,29 @@
+# E2E / docs overlay: a throwaway stack from the prod image, under its own
+# compose project, that never touches a local instance:
+#
+#   COMPOSE_PROJECT_NAME=zitatdatenbank_e2e PORT_BASE=25600 SECRET_KEY=... \
+#     docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
+#
+# - container names follow the project, the app listens on 127.0.0.1:PORT_BASE only
+# - no bind mounts: MariaDB keeps its data in an anonymous volume (`down -v`
+#   removes it) and /data stays empty, so the ~516k-quote auto-import from
+#   data/data.tar.gz never runs - the stack starts with an empty database
+# - the small CSV fixtures in e2e/docs/fixtures are mounted read-only at
+#   /fixtures; e2e/docs/seed.ts imports them with `flask import-csv`
+services:
+  db:
+    container_name: ${COMPOSE_PROJECT_NAME}-db
+    restart: "no"
+    volumes: !reset []
+    healthcheck:
+      start_interval: 2s
+
+  web:
+    container_name: ${COMPOSE_PROJECT_NAME}-web
+    restart: "no"
+    ports: !override
+      - "127.0.0.1:${PORT_BASE:-25600}:5000"
+    volumes: !override
+      - ./e2e/docs/fixtures:/fixtures:ro
+    healthcheck:
+      start_interval: 2s
