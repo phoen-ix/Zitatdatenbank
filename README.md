@@ -1,6 +1,6 @@
 # Zitatdatenbank
 
-Eine mehrsprachige (DE/EN) Webanwendung zum Durchsuchen, Suchen und Verwalten einer Sammlung von ~516.000 Zitaten (24.600 deutsche + 500.000 englische).
+Eine mehrsprachige (DE/EN) Webanwendung zum Durchsuchen, Suchen und Verwalten einer Sammlung von ~516.000 Zitaten (24.600 deutsche + 500.000 englische). Läuft als Docker-Stack (Flask + MariaDB); CI führt die Tests, `pip-audit` und die Screenshot-Tour als Render-Check aus.
 
 ---
 
@@ -11,7 +11,7 @@ Eine mehrsprachige (DE/EN) Webanwendung zum Durchsuchen, Suchen und Verwalten ei
 - **Autoren- & Tag-Listen** mit Zitatanzahl und alphabetischer Navigation
 - **Zufallszitat** auf der Startseite mit Ein-Klick-Aktualisierung
 - **Admin-Panel** mit Zitat-CRUD, Tag-Verwaltung, Einstellungen und Backup/Wiederherstellung
-- **14 Themes** — 5 statische (Klassisch, Modern, Dunkel, Wald, Ozean) + 9 animierte (Hacker Terminal, Schreibmaschine, Neon Glow, Pergament, Vaporwave, Nordlichter, Unterwasser, Kosmos, Feuer)
+- **14 Themes** — 5 statische (Klassisch, Modern, Dunkel, Wald, Ozean) + 9 animierte (Hacker Terminal, Schreibmaschine, Neon Glow, Pergament, Vaporwave, Nordlichter, Unterwasser, Kosmos, Feuer), dazu „Eigene Farben“
 - **Anpassung pro Theme** — alle 11 Farben und 2 Effektwerte (Tippgeschwindigkeit, Partikelanzahl) pro Theme im Admin-Bereich einstellbar
 - **Tipp-Animation** bei animierten Themes mit konfigurierbarem Cursor und Geschwindigkeit
 - **Partikeleffekte** — Blasen, Sterne, Funken usw. mit konfigurierbarer Anzahl
@@ -54,6 +54,8 @@ docker compose up -d
 
 Die Datendateien (`data/data.tar.gz`) werden beim ersten Start automatisch entpackt. Die App importiert dann automatisch ~24.600 deutsche Zitate aus `zitate.sql` und ~500.000 englische Zitate aus `quotes.csv`, führt eine versionierte Datenbereinigung durch (Wiki-Markup, abgeschnittene Autoren, nicht-lateinische Schriftzeichen, Deduplizierung via CRC32-indiziertem Hashing) und erstellt einen Admin-Benutzer aus Umgebungsvariablen.
 
+**HTTPS:** Session-Cookies sind `Secure`. Über reines HTTP funktionieren Anmeldung, Formulare (CSRF) und Sprachwechsel nur unter `http://localhost`; auf einem Server die App hinter einen HTTPS-Reverse-Proxy stellen.
+
 **MariaDB-Upgrade bestehender Installationen:** Der `db`-Service setzt `MARIADB_AUTO_UPGRADE=1`, daher wird `mariadb-data/` beim ersten Start mit einer neueren Major-Version automatisch aktualisiert. Vorher einen geprüften Dump anlegen (`docker compose exec db mariadb-dump ...`) — ein Major-Upgrade lässt sich nicht zurückrollen.
 
 ## Entwicklung
@@ -62,14 +64,20 @@ Die Datendateien (`data/data.tar.gz`) werden beim ersten Start automatisch entpa
 pip install -r requirements.txt
 
 # Tests ausführen
-FLASK_TESTING=1 python3 -m pytest tests/ -v
+python3 -m pytest
 
-# Lokal starten
-export SECRET_KEY=dev-secret FLASK_TESTING=1 SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-cd app && flask run
+# Lokal starten (SQLite unter instance/dev.db, Admin admin/admin)
+cd app
+export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db ADMIN_PASSWORD=admin
+python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
+python -m flask run      # http://localhost:5000
 ```
 
+`python -m flask`, nicht `flask`: Wegen `app/__init__.py` findet das `flask`-Skript die Module in `app/` nicht.
+
 ## CLI-Befehle
+
+Im Ordner `app/` mit `python -m flask …`, im Docker-Stack mit `docker compose exec web python -m flask …`:
 
 - `flask import-quotes <pfad>` — Zitate aus SQL-Dump importieren
 - `flask import-csv <pfad> --default-tags "tag1,tag2"` — Zitate aus CSV importieren (Spalten: quote, author, category)
@@ -78,7 +86,7 @@ cd app && flask run
 
 ## Admin-Zugang
 
-Zugangsdaten werden über die Umgebungsvariablen `ADMIN_USERNAME` und `ADMIN_PASSWORD` gesetzt. Das Admin-Panel ist unter `/admin` erreichbar.
+Zugangsdaten werden über die Umgebungsvariablen `ADMIN_USERNAME` und `ADMIN_PASSWORD` gesetzt (ohne `.env`-Wert setzt `docker-compose.yml` `admin`/`admin`). Der Benutzer wird nur angelegt, wenn er noch nicht existiert; ein späteres Ändern von `ADMIN_PASSWORD` ändert das Passwort nicht — dafür `flask create-admin --username <name> --password <neu>`. Das Admin-Panel ist unter `/admin` erreichbar.
 
 ## Themes
 
@@ -94,7 +102,7 @@ Zugangsdaten werden über die Umgebungsvariablen `ADMIN_USERNAME` und `ADMIN_PAS
 | | Kosmos |
 | | Feuer |
 
-Alle Theme-Farben und -Effekte sind pro Theme über die Admin-Einstellungen anpassbar. Animierte Themes beinhalten Tipp-Animationen und Partikeleffekte (Blasen, Sterne, Funken) mit konfigurierbarer Geschwindigkeit und Anzahl.
+Dazu kommt „Eigene Farben“ (frei wählbare Farben auf Basis von Klassisch). Alle Theme-Farben und -Effekte sind pro Theme über die Admin-Einstellungen anpassbar. Animierte Themes beinhalten Tipp-Animationen und Partikeleffekte (Blasen, Sterne, Funken) mit konfigurierbarer Geschwindigkeit und Anzahl.
 
 ## Sicherheit
 
@@ -145,11 +153,15 @@ Gibt ein einzelnes Zitat nach ID zurück (60 Anfragen/Minute).
 {"id": 42, "text": "Der einzige Weg...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
 ```
 
+### `GET /health`
+
+Healthcheck (nicht rate-limitiert): `200 {"status": "ok", "checks": {"database": "ok"}}`, bei Datenbankfehler `503`.
+
 ---
 
 # Zitatdatenbank (English)
 
-A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~516,000 quotes (24.6k German + 500k English).
+A multilingual (DE/EN) web application for browsing, searching, and managing a collection of ~516,000 quotes (24.6k German + 500k English). Runs as a Docker stack (Flask + MariaDB); CI runs the tests, `pip-audit` and the screenshot tour as a render check.
 
 ## Features
 
@@ -158,7 +170,7 @@ A multilingual (DE/EN) web application for browsing, searching, and managing a c
 - **Author & Tag** listings with quote counts and alphabetical navigation
 - **Random Quote** on the landing page with one-click refresh
 - **Admin Panel** with quote CRUD, tag management, settings, and backup/restore
-- **14 Themes** - 5 static (Klassisch, Modern, Dunkel, Wald, Ozean) + 9 animated (Hacker Terminal, Schreibmaschine, Neon Glow, Pergament, Vaporwave, Nordlichter, Unterwasser, Kosmos, Feuer)
+- **14 Themes** - 5 static (Klassisch, Modern, Dunkel, Wald, Ozean) + 9 animated (Hacker Terminal, Schreibmaschine, Neon Glow, Pergament, Vaporwave, Nordlichter, Unterwasser, Kosmos, Feuer), plus "Custom Colors"
 - **Per-theme customization** - all 11 colors and 2 effect values (typing speed, particle count) editable per theme in admin settings
 - **Typing animation** on animated themes with per-theme cursor styles and configurable speed
 - **Particle effects** - bubbles, stars, embers etc. with configurable count
@@ -201,6 +213,8 @@ docker compose up -d
 
 The data files (`data/data.tar.gz`) are extracted automatically on first startup. The app then auto-imports ~24.6k German quotes from `zitate.sql` and ~500k English quotes from `quotes.csv`, runs versioned data cleanup (wiki markup, truncated authors, non-Latin scripts, deduplication via CRC32-indexed hashing), and creates an admin user from environment variables.
 
+**HTTPS:** session cookies are `Secure`. Over plain HTTP, login, forms (CSRF) and the language switch only work on `http://localhost`; on a server, put the app behind an HTTPS reverse proxy.
+
 **Upgrading an existing install to a newer MariaDB major:** the `db` service sets `MARIADB_AUTO_UPGRADE=1`, so the container upgrades `mariadb-data/` in place on its first start. Take a verified dump first (`docker compose exec db mariadb-dump ...`) — a major-version upgrade cannot be rolled back.
 
 ## Development
@@ -209,14 +223,20 @@ The data files (`data/data.tar.gz`) are extracted automatically on first startup
 pip install -r requirements.txt
 
 # Run tests
-FLASK_TESTING=1 python3 -m pytest tests/ -v
+python3 -m pytest
 
-# Run locally
-export SECRET_KEY=dev-secret FLASK_TESTING=1 SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-cd app && flask run
+# Run locally (SQLite in instance/dev.db, admin admin/admin)
+cd app
+export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db ADMIN_PASSWORD=admin
+python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
+python -m flask run      # http://localhost:5000
 ```
 
+Use `python -m flask`, not `flask`: because of `app/__init__.py` the `flask` script cannot import the modules in `app/`.
+
 ## CLI Commands
+
+Run them in `app/` as `python -m flask …`, or in the Docker stack as `docker compose exec web python -m flask …`:
 
 - `flask import-quotes <path>` — Import quotes from SQL dump
 - `flask import-csv <path> --default-tags "tag1,tag2"` — Import quotes from CSV (columns: quote, author, category)
@@ -225,7 +245,7 @@ cd app && flask run
 
 ## Admin Access
 
-Default credentials are set via `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables. Access the admin panel at `/admin`.
+Credentials are set via the `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables (without a `.env` value, `docker-compose.yml` uses `admin`/`admin`). The user is only created if it does not exist yet; changing `ADMIN_PASSWORD` later does not change the password - use `flask create-admin --username <name> --password <new>`. Access the admin panel at `/admin`.
 
 ## Themes
 
@@ -241,7 +261,7 @@ Default credentials are set via `ADMIN_USERNAME` and `ADMIN_PASSWORD` environmen
 | | Kosmos |
 | | Feuer |
 
-All theme colors and effects are customizable per-theme through the admin settings UI. Animated themes include typing animations and particle effects (bubbles, stars, embers) with configurable speed and count.
+Plus "Custom Colors" (free colors on top of Klassisch). All theme colors and effects are customizable per-theme through the admin settings UI. Animated themes include typing animations and particle effects (bubbles, stars, embers) with configurable speed and count.
 
 ## Security
 
@@ -291,3 +311,7 @@ Returns a single quote by ID (60 requests/minute).
 ```json
 {"id": 42, "text": "The only way...", "author": "Albert Einstein", "tags": ["Deutsch", "Philosophie"]}
 ```
+
+### `GET /health`
+
+Health check (not rate-limited): `200 {"status": "ok", "checks": {"database": "ok"}}`, `503` when the database is unreachable.

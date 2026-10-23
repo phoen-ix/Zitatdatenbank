@@ -1,80 +1,78 @@
 # Zitatdatenbank - CLAUDE.md
 
-## Project Overview
-Multilingual (DE/EN) Flask web application for browsing, searching, and managing ~516k quotes (24.6k German + 500k English, after dedup). German quotes from MySQL dump (`zitate.sql`), English quotes from Kaggle CSV (`quotes.csv`).
+Bilingual (DE/EN) Flask app for browsing, searching and managing ~516k quotes (24.6k German from the
+datenbörse.net MySQL dump `zitate.sql`, 500k English from the Kaggle `quotes.csv`). Flask 3.1 +
+SQLAlchemy/Login/WTF/Limiter/Migrate, MariaDB 12.3 (SQLite in tests), Bootstrap 5.3 + Bootstrap Icons
+self-hosted, gunicorn in Docker. README.md (German first, then English) is the user doc.
 
-## Tech Stack
-- Flask 3.1 with SQLAlchemy, Flask-Login, Flask-WTF, Flask-Limiter, Flask-Migrate
-- MariaDB 12.3 (production), SQLite in-memory (tests)
-- Bootstrap 5.3 self-hosted, Bootstrap Icons
-- Docker + docker-compose
-
-## Running Tests
+## Commands
 ```bash
-FLASK_TESTING=1 python3 -m pytest tests/ -v
+python3 -m pytest                       # tests (conftest sets FLASK_TESTING, SQLite in-memory)
+# local dev server, run in app/ (SQLite in instance/dev.db, admin admin/admin)
+export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db ADMIN_PASSWORD=admin
+python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
+python -m flask run
+# docs screenshots: throwaway stack + Playwright tour (needs `npm ci` + chromium in e2e/)
+scripts/docs-screenshots.sh [outdir]    # default docs/screenshots; PORT_BASE=25600
 ```
+CLI (in `app/`, or `docker compose exec web python -m flask …`): `import-quotes <sql>`,
+`import-csv <csv> --default-tags "a,b"` (columns quote, author, category; category = comma-separated
+tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets an existing password).
 
-## Running Locally
-```bash
-export FLASK_TESTING=1
-export SECRET_KEY=dev-secret
-export SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-cd app && flask run
-```
+## Invariants
+- **`python -m flask`, never `flask`.** `app/__init__.py` makes the `flask` script import `app.app`
+  without `app/` on sys.path → `No module named 'extensions'`. Same inside the container (/app).
+- **Importing app.py runs the startup sequence** unless `FLASK_TESTING=1`: create_all, admin from env,
+  auto-import (`/data/zitate.sql`, `/data/quotes.csv` if the quote table is empty), versioned cleanup,
+  one-time tag migration, FULLTEXT indexes. That includes every CLI command.
+- **Tag-migration trap:** `_auto_migrate_tags` runs whenever quotes exist and the `tags_migrated`
+  Setting is unset, and *replaces* every quote's tags with Deutsch/German/Quelle: Zitatdatenbank +
+  its `category`. CSV-imported quotes have no category, so they lose their tags. That hits a fresh
+  install (the English quotes the same startup just imported) and any restore (restore clears
+  `tags_migrated`). Import CSVs into a fresh DB with `FLASK_TESTING=1` (as e2e/docs/seed.ts does).
+- **CSP blocks inline event handlers:** `script-src 'self' 'nonce-…'`, no `unsafe-hashes`. Write JS in a
+  `<script nonce="{{ csp_nonce }}">` block with addEventListener. The existing `onclick`/`oninput`
+  (admin/settings.html) and `onchange` (browse.html sort select) attributes never run.
+- **Secure session cookies** whenever `FLASK_TESTING != 1`: over plain HTTP, login/CSRF/language switch
+  work only on localhost.
+- After any write to quotes, tags or settings call `invalidate_stats_cache()` (in-process cache, 5-min TTL,
+  one gunicorn worker).
+- Every UI string goes through `_('key')` with both `de` and `en` in translations.py; default language `de`.
+- Theme overrides live in Setting `theme_{name}_{field}`; switching themes deletes the new theme's stale
+  overrides, colors are saved only when customizing the current theme. Validate colors (hex) and effects (int).
+- `data/data.tar.gz` (~53 MB, Git LFS, `.dockerignore`d) reaches the container only via the `./data`
+  bind mount; entrypoint.sh extracts it and exits with a hint if it is an LFS pointer.
+- **Docs/e2e stacks:** compose project `zitatdatenbank_docs` (tour) / `zitatdatenbank_e2e`, never the
+  default `zitatdatenbank` (fixed `container_name`s of a local instance). Port block 25600, bound to
+  127.0.0.1. `docker-compose.e2e.yml` drops every bind mount (no `data.tar.gz` import, anonymous DB volume,
+  `.env` ignored via `--env-file /dev/null`); `docker-compose.docs.yml` seeds the gunicorn worker's RNG so
+  the home page's random quote is reproducible. Teardown `down -v --remove-orphans --rmi local`.
+- Demo data = `e2e/docs/fixtures/*.csv` (≤200 rows, sampled from the two real sources, see its README);
+  `*.csv` is gitignored everywhere else. Screenshot names are stable once committed; the gallery is
+  `docs/screenshots/README.md`.
+- This VM also runs live stacks (`phytotron-*`, `vib-*`): never touch them or their project names.
 
-## Docker
-```bash
-cp .env.example .env  # Edit with real values
-docker compose build && docker compose up -d
-```
+## Layout
+- `app/app.py` - app factory-less setup, security headers, error handlers, CLI, startup sequence
+- `app/config.py` - THEMES (5 static + 9 animated), COLOR_KEYS (11), EFFECT_KEYS (typing_speed, particle_count)
+- `app/helpers.py` - settings, `_()`, active theme + overrides, caches, FastPagination
+- `app/import_service.py` (SQL/CSV import), `cleanup_service.py` (CLEANUP_VERSION, author/text fixes, dedup),
+  `backup_service.py` (mysqldump tar.gz in /backups)
+- `app/routes/` - main.py (public pages, `/api/*`, `/health`, `/set-lang/<lang>`), admin.py, auth.py
+- `app/templates/`, `app/static/css/animations.css` (animated themes; honours prefers-reduced-motion)
+- `e2e/` - own Node package: docs tour (`docs/tour.spec.ts`, `docs/seed.ts`), `playwright.docs.config.ts`
 
-## Project Structure
-- `app/app.py` - Flask app, CLI commands, startup logic, `|nlbr` template filter, tag migration
-- `app/extensions.py` - Shared Flask extensions (db, csrf, migrate, limiter, login_manager)
-- `app/config.py` - 14 theme definitions (5 static + 9 animated), COLOR_KEYS, EFFECT_KEYS, constants
-- `app/translations.py` - DE/EN translation dictionaries
-- `app/models.py` - Quote, Tag, quote_tags, AdminUser, Setting, BackupLog
-- `app/helpers.py` - Settings CRUD, translation helper, theme utilities, per-theme override loading, stats/result caching, FastPagination
-- `app/import_service.py` - SQL parser + data import logic
-- `app/backup_service.py` - Backup create/restore/prune
-- `app/cleanup_service.py` - Quote data cleanup (wiki markup, truncated authors, dedup)
-- `app/routes/` - main.py (public + credits + REST API), admin.py (admin CRUD + tags + per-theme settings), auth.py (login/logout)
-- `app/templates/` - Jinja2 templates (tags.html, credits.html, admin/tags.html)
-- `app/static/css/animations.css` - Animated theme styles, typing cursor, particle containers
-- `app/templates/errors/` - Custom 404/500 error pages
-- `tests/` - pytest test suite (269 tests)
-
-## CLI Commands
-- `flask import-quotes <path>` - Import quotes from SQL dump
-- `flask import-csv <path> --default-tags "tag1,tag2"` - Import quotes from CSV (columns: quote, author, category)
-- `flask cleanup-quotes` - Fix wiki markup, truncated authors/categories, non-Latin scripts, deduplication
-- `flask create-admin --username X --password Y` - Create admin user
-
-## Key Patterns
-- Translation: `_('key')` function, language set via session
-- Tags: Many-to-many (Quote ↔ Tag via quote_tags). Replaces old category field. Admin-managed, public-filterable. German quotes tagged "Deutsch", "German", "Quelle: Zitatdatenbank". English quotes tagged "English", "Englisch", "Source: Kaggle". Categories auto-migrated to tags on first startup (`tags_migrated` Setting).
-- Themes: 14 themes (5 static, 9 animated with particles/typing effects), all customizable per-theme via admin settings
-- Theme overrides stored in Setting table as `theme_{name}_{field}`, merged with defaults at load time
-- 11 color fields + 2 effect fields (typing_speed, particle_count) per theme
-- CSS variables in `:root` for all theme colors, no `is_dark` conditionals
-- `|nlbr` filter converts `//` in quote text to `<br>` tags (1,561 quotes affected)
-- Typing animation on animated themes processes all `.quote-text` elements, handles `<br>` nodes
-- Auth: Flask-Login with AdminUser model, env var auto-creation. Login rate-limited (10/min). Open redirect prevention on `next` param (requires relative path starting with `/`). Session: 8h timeout, HttpOnly, SameSite=Lax, Secure cookies.
-- Auto-import: Quotes imported on first startup if table is empty
-- Data files: Distributed as `data/data.tar.gz` (53MB), auto-extracted by entrypoint.sh on first start. Contains `zitate.sql` (German) and `quotes.csv` (English). Stored in **Git LFS** (`.gitattributes`): clones need `git lfs install && git lfs pull`; without it the file is a 133-byte pointer and entrypoint.sh exits with a message saying so (data is required, so the `web` container keeps restarting until the real file is there). Not baked into the image (`.dockerignore` excludes `*.tar.gz`); it arrives through the `./data:/data` bind mount.
-- Auto-cleanup: Versioned (CLEANUP_VERSION in cleanup_service.py, `cleanup_version` Setting), re-runs on version bump. Handles wiki markup, truncated authors, non-Latin scripts, sentence-like garbage authors, deduplication (CRC32-indexed text_hash column on MariaDB). All deletions (dedup, non-Latin, garbage) delete quote_tags FK entries first.
-- Auto-tag-migration: One-time migration of category → tags + default tags, gated by `tags_migrated` Setting
-- Credits page: `/credits` route with CC BY-SA 3.0 (datenbörse.net) + CC0 (Kaggle) license info, linked from footer
-- Theme switching: On theme change, stale per-theme overrides are cleared; color overrides only saved when customizing the current theme (not when switching)
-- Random quote: Uniform distribution via COUNT + random OFFSET (not `>= rand_id` which biases toward quotes after ID gaps). Index page sends `Cache-Control: no-store` to prevent browser caching.
-- Performance: In-memory cache (`_stats_cache` in helpers.py, 5-min TTL) for stats, theme, tags, settings. `invalidate_stats_cache()` clears all caches on data/settings changes. `FastPagination` skips COUNT queries. Keyset pagination on browse (cursor param). `selectinload(Quote.tags)` for batch tag loading. FULLTEXT MATCH for search on MariaDB.
-- REST API: `/api/random`, `/api/quotes` (browse/search/filter), `/api/quotes/<id>`. Rate-limited (30/min browse, 60/min detail). Returns JSON with id, text, author, tags. `X-RateLimit-*` headers on all responses. `/search` also rate-limited (30/min).
-- Security headers: CSP with nonce-based script-src, X-Frame-Options: DENY, X-Content-Type-Options: nosniff. CSRF on all forms.
-- Input validation: quotes_per_page (int 5-100, safe fallback on corrupt values), site_name (max 100 chars), color inputs (hex regex on both custom and named-theme overrides), effect inputs (int validation), backup filenames (strict regex), page/per_page clamped to valid ranges. Cursor values < 1 ignored. FULLTEXT boolean operators sanitized. LIKE wildcards escaped. DB credentials URL-encoded in connection URI.
-- Error handling: Custom 404/500 handlers. JSON responses for `/api/` routes, HTML templates for browser requests. Translated rate limit messages.
-- Backup: SQL dump excludes app state tables (setting, admin_user, backup_log, alembic_version). Restore validates tar members and rejects symlinks. Restore resets `cleanup_version` and `tags_migrated` so data quality steps re-run. Filename whitelist on download/restore/delete.
-- Atomicity: `set_setting(commit=False)` for batch operations, single commit per settings save. `begin_nested()` savepoints for tag creation to prevent IntegrityError from rolling back enclosing transactions.
-- Session: SESSION_COOKIE_SECURE in production, HttpOnly, SameSite=Lax, 8h timeout.
-- DB integrity: ON DELETE CASCADE on quote_tags FKs, index on tag_id.
-- Startup logging: Numbered steps [1/6]–[6/6] with progress and elapsed time for `docker compose logs -f`.
-- Tests: SQLite in-memory, CSRF disabled, rate limiter disabled, session-scoped app fixture. Cache invalidated between tests in conftest.py `clean_db` fixture.
+## Key patterns
+- Tags: many-to-many via `quote_tags` (ON DELETE CASCADE); German quotes carry Deutsch/German/
+  Quelle: Zitatdatenbank, English ones English/Englisch/Source: Kaggle.
+- Random quote: COUNT + random OFFSET (uniform; `>= rand_id` was biased by ID gaps); index sends
+  `Cache-Control: no-store`.
+- Performance: keyset pagination (cursor) on browse/admin lists, FastPagination (no COUNT),
+  `selectinload(Quote.tags)`, FULLTEXT MATCH on MariaDB (boolean operators stripped), cached tag-name map.
+- Security: CSRF on all forms, login 10/min, search, `/api/random` and `/api/quotes` 30/min, `/api/quotes/<id>` 60/min,
+  `X-RateLimit-*` headers, `next` must be a relative path, Referer redirects same-host only, backup
+  filenames whitelisted, restore extracts only `dump.sql` and rejects links.
+- Backups exclude setting/admin_user/backup_log/alembic_version; restore resets `cleanup_version` and
+  `tags_migrated`.
+- `|nlbr` turns `//` in quote text into `<br>`; the typing animation keeps those breaks.
+- Startup logs numbered steps [1/6]–[6/6] (`docker compose logs -f web`).
