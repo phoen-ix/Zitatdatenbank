@@ -406,11 +406,13 @@ def backup_restore(filename):
     if ok:
         # Reset cleanup version so data quality fixes re-run on restored data
         set_setting('cleanup_version', '0')
-        set_setting('tags_migrated', '')
+        # Re-run the tag migration only for a pre-tag backup: it would tag quotes left untagged on purpose
+        if not db.session.query(quote_tags).first():
+            set_setting('tags_migrated', '')
         invalidate_stats_cache()
         flash(_('backup_restored'), 'success')
     else:
-        flash(msg, 'error')
+        flash(_('restore_failed') + f': {msg}', 'error')
     return redirect(url_for('admin.backup'))
 
 

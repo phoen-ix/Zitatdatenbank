@@ -28,9 +28,9 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
   empty), versioned cleanup, one-time tag migration, FULLTEXT indexes. `flask …` commands (`flask run`
   too; Flask sets `FLASK_RUN_FROM_CLI`) only run create_all; `FLASK_TESTING=1` skips both.
 - **Tag migration** (`_auto_migrate_tags`) runs whenever quotes exist and the `tags_migrated` Setting
-  is unset (fresh install, after every restore). It only touches quotes *without* tags (the SQL import
-  creates German quotes untagged): Deutsch/German/Quelle: Zitatdatenbank + their `category`. Never let
-  it replace existing tags again: that re-tagged the English CSV import as German.
+  is unset (fresh install, after restoring a backup without any tags). It only touches quotes *without*
+  tags (the SQL import creates German quotes untagged): Deutsch/German/Quelle: Zitatdatenbank + their
+  `category`. Never let it replace existing tags again: that re-tagged the English CSV import as German.
 - **CSP blocks inline event handlers:** `script-src 'self' 'nonce-…'`, no `unsafe-hashes`. Never write
   `onclick=`/`onchange=`… (tests/test_routes.py fails on them): use a `<script nonce="{{ csp_nonce }}">`
   block with addEventListener, or base.html's delegated `data-confirm` / `data-autosubmit` attributes.
@@ -73,7 +73,7 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
 - Security: CSRF on all forms, login 10/min, search, `/api/random` and `/api/quotes` 30/min, `/api/quotes/<id>` 60/min,
   `X-RateLimit-*` headers, `next` must be a relative path, Referer redirects same-host only, backup
   filenames whitelisted, restore extracts only `dump.sql` and rejects links.
-- Backups exclude setting/admin_user/backup_log/alembic_version; restore resets `cleanup_version` and
-  `tags_migrated`.
+- Backups exclude setting/admin_user/backup_log/alembic_version; restore resets `cleanup_version`, and
+  `tags_migrated` only when the restored data has no tags.
 - `|nlbr` turns `//` in quote text into `<br>`; the typing animation keeps those breaks.
 - Startup logs numbered steps [1/6]–[6/6] (`docker compose logs -f web`).

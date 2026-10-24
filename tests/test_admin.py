@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_admin_requires_login(client, app):
     response = client.get('/admin/')
     assert response.status_code == 302
@@ -407,3 +410,28 @@ def test_german_ui_has_no_hard_coded_english(admin_client, app, make_quote, monk
     for german in ('Dateiname', 'Größe', 'Datum', 'Protokoll', 'Zeit', 'Stufe', 'Meldung'):
         assert f'>{german}</' in backup
     assert 'Der Zitattext fehlt.' in admin_client.post('/admin/quotes/add', data={'text': ''}).get_data(as_text=True)
+
+
+RESTORE_URL = '/admin/backup/zitate_backup_2026_06_15_08-00-00.tar.gz/restore'
+
+
+def test_restore_failure_is_translated(admin_client, monkeypatch):
+    import routes.admin
+    monkeypatch.setattr(routes.admin, 'restore_backup', lambda f: (False, 'Database restore failed'))
+    html = admin_client.post(RESTORE_URL, follow_redirects=True).get_data(as_text=True)
+    assert 'Wiederherstellung fehlgeschlagen: Database restore failed' in html
+
+
+@pytest.mark.parametrize('tags, flag', [(['English'], '1'), (None, '')])
+def test_restore_reruns_tag_migration_only_for_pre_tag_backups(admin_client, make_quote, monkeypatch,
+                                                               tags, flag):
+    """A restored backup with tags keeps its untagged quotes untagged (e.g. an English quote added
+    without tags); only a backup without any tags gets the migration again."""
+    import routes.admin
+    from helpers import get_setting, set_setting
+    monkeypatch.setattr(routes.admin, 'restore_backup', lambda f: (True, 'ok'))
+    set_setting('tags_migrated', '1')
+    make_quote()
+    make_quote(tags=tags)
+    admin_client.post(RESTORE_URL)
+    assert get_setting('tags_migrated') == flag

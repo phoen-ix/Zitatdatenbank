@@ -113,6 +113,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'backup_deleted': {'de': 'Backup gelöscht.', 'en': 'Backup deleted.'},
     'backup_failed': {'de': 'Backup fehlgeschlagen.', 'en': 'Backup failed.'},
     'backup_not_found': {'de': 'Backup nicht gefunden.', 'en': 'Backup not found.'},
+    'restore_failed': {'de': 'Wiederherstellung fehlgeschlagen', 'en': 'Restore failed'},
     'filename': {'de': 'Dateiname', 'en': 'Filename'},
     'size': {'de': 'Größe', 'en': 'Size'},
     'date': {'de': 'Datum', 'en': 'Date'},

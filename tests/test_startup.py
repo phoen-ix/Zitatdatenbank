@@ -24,8 +24,8 @@ def test_tag_migration_tags_untagged_quotes(make_quote):
 
 
 def test_tag_migration_keeps_existing_tags(make_quote):
-    """A fresh install imports the English CSV (tagged) before the migration runs, and a
-    restore clears tags_migrated: the migration must not replace those tags."""
+    """A fresh install imports the English CSV (tagged) before the migration runs: the
+    migration must not replace those tags."""
     german = make_quote(category='Natur')
     english = make_quote(tags=['English', 'Englisch', 'Source: Kaggle', 'life'])
     _auto_migrate_tags()
