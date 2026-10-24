@@ -289,7 +289,8 @@ def _auto_cleanup():
 
 
 def _auto_migrate_tags():
-    """Migrate category field to tags (one-time). Adds default tags to all quotes."""
+    """Migrate category field to tags (one-time): quotes without tags (the German SQL
+    import) get the default German tags plus their category. Tagged quotes keep their tags."""
     from helpers import get_setting, set_setting
     if get_setting('tags_migrated', '') == '1':
         logger.info('       Tags already migrated.')
@@ -297,7 +298,12 @@ def _auto_migrate_tags():
     count = db.session.query(models.Quote).count()
     if count == 0:
         return
-    logger.info('       Migrating categories to tags for %d quotes...', count)
+    all_quotes = models.Quote.query.filter(~models.Quote.tags.any()).all()
+    if not all_quotes:
+        set_setting('tags_migrated', '1')
+        logger.info('       All %d quotes are tagged, nothing to migrate.', count)
+        return
+    logger.info('       Migrating categories to tags for %d untagged quotes...', len(all_quotes))
 
     # Create default tags
     default_tag_names = ['Deutsch', 'German', 'Quelle: Zitatdatenbank']
@@ -317,7 +323,6 @@ def _auto_migrate_tags():
     for t in default_tags:
         tag_cache[t.name] = t
 
-    all_quotes = models.Quote.query.all()
     categories_seen: dict[str, str] = {}  # lowercase -> preferred casing
     for q in all_quotes:
         cat = (q.category or '').strip()

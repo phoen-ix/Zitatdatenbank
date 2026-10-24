@@ -27,11 +27,10 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
 - **Importing app.py runs the startup sequence** unless `FLASK_TESTING=1`: create_all, admin from env,
   auto-import (`/data/zitate.sql`, `/data/quotes.csv` if the quote table is empty), versioned cleanup,
   one-time tag migration, FULLTEXT indexes. That includes every CLI command.
-- **Tag-migration trap:** `_auto_migrate_tags` runs whenever quotes exist and the `tags_migrated`
-  Setting is unset, and *replaces* every quote's tags with Deutsch/German/Quelle: Zitatdatenbank +
-  its `category`. CSV-imported quotes have no category, so they lose their tags. That hits a fresh
-  install (the English quotes the same startup just imported) and any restore (restore clears
-  `tags_migrated`). Import CSVs into a fresh DB with `FLASK_TESTING=1` (as e2e/docs/seed.ts does).
+- **Tag migration** (`_auto_migrate_tags`) runs whenever quotes exist and the `tags_migrated` Setting
+  is unset (fresh install, after every restore). It only touches quotes *without* tags (the SQL import
+  creates German quotes untagged): Deutsch/German/Quelle: Zitatdatenbank + their `category`. Never let
+  it replace existing tags again: that re-tagged the English CSV import as German.
 - **CSP blocks inline event handlers:** `script-src 'self' 'nonce-…'`, no `unsafe-hashes`. Write JS in a
   `<script nonce="{{ csp_nonce }}">` block with addEventListener. The existing `onclick`/`oninput`
   (admin/settings.html) and `onchange` (browse.html sort select) attributes never run.
