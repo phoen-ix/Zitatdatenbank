@@ -381,8 +381,14 @@ def _ensure_fulltext_indexes():
         db.session.rollback()
 
 
-# Startup logic
-if os.environ.get('FLASK_TESTING') != '1':
+# Startup sequence: only for the server (gunicorn, `python app.py`). Flask sets
+# FLASK_RUN_FROM_CLI for every `flask …` command (`flask run` too); those only need the tables.
+if os.environ.get('FLASK_TESTING') == '1':
+    pass
+elif os.environ.get('FLASK_RUN_FROM_CLI') == 'true':
+    with app.app_context():
+        db.create_all()
+else:
     from sqlalchemy.exc import OperationalError
 
     _startup_start = time.monotonic()

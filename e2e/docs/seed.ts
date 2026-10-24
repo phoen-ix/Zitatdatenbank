@@ -5,15 +5,7 @@ import { execFileSync } from 'node:child_process'
  * imported with the app's own `flask import-csv` and tagged like a production
  * install (the default tags the startup auto-import uses).
  *
- * IDEMPOTENT: it imports only into an empty database.
- *
- * FLASK_TESTING=1 keeps the CLI process from running app.py's startup steps:
- * between the two imports they would run the cleanup and the one-time
- * category->tag migration, which replaces the tags of every quote already
- * imported.
- *
- * `python -m flask`, not `flask`: app/ has an __init__.py, so the `flask`
- * script imports app.py as `app.app` without app/ on sys.path and fails. */
+ * IDEMPOTENT: it imports only into an empty database. */
 
 export const ADMIN_USERNAME = process.env.DOCS_ADMIN_USERNAME ?? 'admin'
 export const ADMIN_PASSWORD = process.env.DOCS_ADMIN_PASSWORD ?? 'docs-admin-not-a-secret'
@@ -41,8 +33,8 @@ export async function apiQuotes(baseURL: string, params: Record<string, string>)
 export async function seedQuotes(baseURL: string): Promise<void> {
   if ((await apiQuotes(baseURL, { per_page: '1' })).length) return
   for (const [csv, tags] of IMPORTS) {
-    execFileSync('docker', ['exec', '-u', 'appuser', '-e', 'FLASK_TESTING=1', WEB,
-      'python', '-m', 'flask', 'import-csv', csv, '--default-tags', tags], { stdio: 'inherit' })
+    execFileSync('docker', ['exec', '-u', 'appuser', WEB,
+      'flask', 'import-csv', csv, '--default-tags', tags], { stdio: 'inherit' })
   }
 }
 

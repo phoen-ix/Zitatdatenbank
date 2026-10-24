@@ -90,19 +90,16 @@ python3 -m pytest
 # Lokal starten (SQLite unter instance/dev.db, Admin admin/admin)
 cd app
 export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-python -m flask create-admin --username admin --password admin   # erster Start legt die Tabellen an
-export FLASK_TESTING=1   # ab hier ohne Startsequenz (sonst überschreibt die Tag-Migration die Tags der CSV-Zitate)
-python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
-python -m flask run      # http://localhost:5000
+flask create-admin --username admin --password admin   # legt auch die Tabellen an
+flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
+flask run      # http://localhost:5000
 ```
 
-Diese Datenbank immer mit `FLASK_TESTING=1` starten: Ohne die Variable ersetzt die einmalige Tag-Migration beim nächsten Start die Tags aller importierten Zitate durch Deutsch/German/Quelle: Zitatdatenbank.
-
-`python -m flask`, nicht `flask`: Wegen `app/__init__.py` findet das `flask`-Skript die Module in `app/` nicht.
+`flask`-Befehle (auch `flask run`) legen nur die Tabellen an. Die Startsequenz (Admin aus `ADMIN_PASSWORD`, Auto-Import aus `/data`, Bereinigung, Tag-Migration, Suchindizes) läuft nur im Server (gunicorn im Docker-Image).
 
 ## CLI-Befehle
 
-Im Ordner `app/` mit `python -m flask …`, im Docker-Stack mit `docker compose exec web python -m flask …`:
+Im Ordner `app/` mit `flask …`, im Docker-Stack mit `docker compose exec web flask …`:
 
 - `flask import-quotes <pfad>` — Zitate aus SQL-Dump importieren
 - `flask import-csv <pfad> --default-tags "tag1,tag2"` — Zitate aus CSV importieren (Spalten: quote, author, category)
@@ -274,19 +271,16 @@ python3 -m pytest
 # Run locally (SQLite in instance/dev.db, admin admin/admin)
 cd app
 export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-python -m flask create-admin --username admin --password admin   # first start creates the tables
-export FLASK_TESTING=1   # skip the startup sequence from here on (its tag migration would overwrite the CSV quotes' tags)
-python -m flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
-python -m flask run      # http://localhost:5000
+flask create-admin --username admin --password admin   # also creates the tables
+flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
+flask run      # http://localhost:5000
 ```
 
-Always start this database with `FLASK_TESTING=1`: without it, the one-time tag migration replaces the tags of every imported quote with Deutsch/German/Quelle: Zitatdatenbank on the next start.
-
-Use `python -m flask`, not `flask`: because of `app/__init__.py` the `flask` script cannot import the modules in `app/`.
+`flask` commands (`flask run` too) only create the tables. The startup sequence (admin from `ADMIN_PASSWORD`, auto-import from `/data`, cleanup, tag migration, search indexes) runs only in the server (gunicorn in the Docker image).
 
 ## CLI Commands
 
-Run them in `app/` as `python -m flask …`, or in the Docker stack as `docker compose exec web python -m flask …`:
+Run them in `app/` as `flask …`, or in the Docker stack as `docker compose exec web flask …`:
 
 - `flask import-quotes <path>` — Import quotes from SQL dump
 - `flask import-csv <path> --default-tags "tag1,tag2"` — Import quotes from CSV (columns: quote, author, category)

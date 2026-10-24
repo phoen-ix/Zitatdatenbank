@@ -1,6 +1,6 @@
 # Demo quotes for the docs tour
 
-`e2e/docs/seed.ts` imports these into the throwaway docs stack with `python -m flask import-csv`
+`e2e/docs/seed.ts` imports these into the throwaway docs stack with `flask import-csv`
 (columns `quote,author,category`; the category is a comma-separated tag list). They are a small
 sample of the app's own data in `data/data.tar.gz`, with the same tags a production install gives
 them:
