@@ -163,7 +163,7 @@ def add_quote():
         tags_str = request.form.get('tags', '').strip()
 
         if not text:
-            flash(_('quote_text') + ' is required.', 'error')
+            flash(_('quote_text_required'), 'error')
             return render_template('admin/quote_form.html', quote=None,
                                    form_data=request.form)
 
@@ -173,7 +173,7 @@ def add_quote():
         _sync_tags(quote, tags_str)
         db.session.commit()
         invalidate_stats_cache()
-        flash(_('save') + ' OK', 'success')
+        flash(_('saved'), 'success')
         return redirect(url_for('admin.quotes'))
 
     return render_template('admin/quote_form.html', quote=None, form_data={})
@@ -183,7 +183,7 @@ def add_quote():
 def edit_quote(quote_id):
     quote = db.session.get(Quote, quote_id)
     if not quote:
-        flash('Quote not found.', 'error')
+        flash(_('quote_not_found'), 'error')
         return redirect(url_for('admin.quotes'))
 
     if request.method == 'POST':
@@ -192,7 +192,7 @@ def edit_quote(quote_id):
         tags_str = request.form.get('tags', '').strip()
 
         if not new_text:
-            flash(_('quote_text') + ' is required.', 'error')
+            flash(_('quote_text_required'), 'error')
             return render_template('admin/quote_form.html', quote=quote,
                                    form_data=request.form)
 
@@ -201,7 +201,7 @@ def edit_quote(quote_id):
         _sync_tags(quote, tags_str)
         db.session.commit()
         invalidate_stats_cache()
-        flash(_('save') + ' OK', 'success')
+        flash(_('saved'), 'success')
         return redirect(url_for('admin.quotes'))
 
     return render_template('admin/quote_form.html', quote=quote, form_data={})
@@ -214,7 +214,7 @@ def delete_quote(quote_id):
         db.session.delete(quote)
         db.session.commit()
         invalidate_stats_cache()
-        flash(_('delete_quote') + ' OK', 'success')
+        flash(_('quote_deleted'), 'success')
     return redirect(url_for('admin.quotes'))
 
 
@@ -263,7 +263,7 @@ def add_tag():
                 nested.commit()
                 db.session.commit()
                 invalidate_stats_cache()
-                flash(_('save') + ' OK', 'success')
+                flash(_('saved'), 'success')
             except IntegrityError:
                 nested.rollback()
                 flash(_('tag_exists'), 'error')
@@ -421,5 +421,5 @@ def backup_delete(filename):
     if delete_backup_file(filename):
         flash(_('backup_deleted'), 'success')
     else:
-        flash('File not found.', 'error')
+        flash(_('backup_not_found'), 'error')
     return redirect(url_for('admin.backup'))

@@ -377,3 +377,33 @@ def test_admin_theme_override_validates_color(admin_client, app):
         from helpers import get_setting
         # Malicious value should NOT be saved
         assert get_setting('theme_klassisch_color_navbar') is None
+
+
+def test_german_ui_has_no_hard_coded_english(admin_client, app, make_quote, monkeypatch, tmp_path):
+    """German is the default language: these labels used to be hard-coded English or borrowed
+    the wrong key (authors' "all" button said "Durchsuchen", the tags filter "Zitate suchen...")."""
+    import re
+    import backup_service
+    from extensions import db
+    from models import BackupLog
+    monkeypatch.setattr(backup_service, 'BACKUP_DIR', str(tmp_path))
+    (tmp_path / 'zitate_backup_2026_06_15_08-00-00.tar.gz').write_bytes(b'x')
+    db.session.add(BackupLog(level='INFO', message='test'))
+    db.session.commit()
+    make_quote(author='Goethe', tags=['Natur'])
+
+    def page(url):
+        return admin_client.get(url).get_data(as_text=True)
+
+    browse = page('/browse?tag=Natur')
+    assert 'Filter aufheben' in browse and '</i> Clear' not in browse
+    assert re.search(r'>\s*Alle\s*</a>', page('/browse/authors'))
+    tags = page('/admin/tags')
+    assert 'placeholder="Tags suchen..."' in tags
+    assert '<th style="width:100px">Zitate</th>' in tags
+    dashboard = page('/admin/')
+    assert 'Schnellzugriff' in dashboard and 'Neueste Zitate' in dashboard
+    backup = page('/admin/backup')
+    for german in ('Dateiname', 'Größe', 'Datum', 'Protokoll', 'Zeit', 'Stufe', 'Meldung'):
+        assert f'>{german}</' in backup
+    assert 'Der Zitattext fehlt.' in admin_client.post('/admin/quotes/add', data={'text': ''}).get_data(as_text=True)

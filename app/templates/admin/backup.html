@@ -18,9 +18,9 @@
     <table class="table table-hover">
         <thead>
             <tr>
-                <th>Filename</th>
-                <th>Size</th>
-                <th>Date</th>
+                <th>{{ _('filename') }}</th>
+                <th>{{ _('size') }}</th>
+                <th>{{ _('date') }}</th>
                 <th>{{ _('actions') }}</th>
             </tr>
         </thead>
@@ -57,14 +57,14 @@
 {% endif %}
 
 {% if logs %}
-<h4 class="mt-4">Log</h4>
+<h4 class="mt-4">{{ _('log') }}</h4>
 <div class="table-responsive">
     <table class="table table-sm">
         <thead>
             <tr>
-                <th>Time</th>
-                <th>Level</th>
-                <th>Message</th>
+                <th>{{ _('time') }}</th>
+                <th>{{ _('level') }}</th>
+                <th>{{ _('message') }}</th>
             </tr>
         </thead>
         <tbody>

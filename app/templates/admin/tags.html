@@ -26,7 +26,7 @@
 
 <form method="GET" action="{{ url_for('admin.tags_list') }}" class="mb-3">
     <div class="input-group">
-        <input type="text" class="form-control" name="q" value="{{ search_query }}" placeholder="{{ _('search_placeholder') }}">
+        <input type="text" class="form-control" name="q" value="{{ search_query }}" placeholder="{{ _('search_tags_placeholder') }}">
         <button class="btn btn-outline-secondary" type="submit">
             <i class="bi bi-search"></i>
         </button>
@@ -41,7 +41,7 @@
             <tr>
                 <th style="width:60px">{{ _('id') }}</th>
                 <th>{{ _('tag_name') }}</th>
-                <th style="width:100px">{{ _('quotes_count') }}</th>
+                <th style="width:100px">{{ _('quotes') }}</th>
                 <th style="width:100px">{{ _('actions') }}</th>
             </tr>
         </thead>

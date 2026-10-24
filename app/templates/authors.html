@@ -7,7 +7,7 @@
 <!-- Letter navigation -->
 <div class="mb-4">
     <a href="{{ url_for('main.authors') }}" class="btn btn-sm {% if not active_letter %}btn-primary{% else %}btn-outline-primary{% endif %} me-1 mb-1">
-        {{ _('nav_browse') }}
+        {{ _('all') }}
     </a>
     {% for l in letters %}
     <a href="{{ url_for('main.authors', letter=l) }}" class="btn btn-sm {% if active_letter == l %}btn-primary{% else %}btn-outline-primary{% endif %} me-1 mb-1">
@@ -28,7 +28,7 @@
 </div>
 
 {% if pagination.pages and pagination.pages > 1 %}
-<nav aria-label="Page navigation" class="mt-3">
+<nav aria-label="{{ _('page_navigation') }}" class="mt-3">
     <ul class="pagination justify-content-center mb-0">
         <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
             {% if pagination.has_prev %}
