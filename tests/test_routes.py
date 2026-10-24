@@ -439,3 +439,16 @@ def test_templates_have_no_inline_event_handlers():
                  for p in sorted(templates.rglob('*.html'))
                  for m in re.finditer(r'\son[a-z]+\s*=', p.read_text())]
     assert offenders == []
+
+
+def test_dark_theme_colors_card_text_and_placeholders(client, app):
+    """Dunkel: card text and placeholders kept Bootstrap's #212529 on a #313244 background."""
+    from helpers import set_setting, invalidate_stats_cache
+    set_setting('theme_name', 'dunkel')
+    invalidate_stats_cache()
+    html = client.get('/').get_data(as_text=True)
+    assert '.card { color: var(--theme-text); }' in html
+    assert '.form-control::placeholder { color: var(--theme-muted); opacity: 1; }' in html
+    set_setting('theme_name', 'klassisch')
+    invalidate_stats_cache()
+    assert '.card { color: var(--theme-text); }' not in client.get('/').get_data(as_text=True)

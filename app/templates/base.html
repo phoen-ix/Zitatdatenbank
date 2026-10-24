@@ -113,6 +113,11 @@
             color: var(--theme-accent);
         }
         .navbar-brand { font-weight: bold; }
+        {% if is_dark %}
+        /* Bootstrap's dark defaults (#212529) would vanish on a dark card or input. */
+        .card { color: var(--theme-text); }
+        .form-control::placeholder { color: var(--theme-muted); opacity: 1; }
+        {% endif %}
     </style>
 </head>
 <body class="{{ theme.get('body_class', '') }}">
