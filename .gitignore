@@ -3,7 +3,7 @@
 
 # Database
 mariadb-data/
-# Local dev SQLite (python -m flask run in app/)
+# Local dev SQLite (flask run in app/)
 instance/
 
 # Backups
