@@ -8,7 +8,7 @@
     <div class="col-md-8">
         <form method="GET" action="{{ url_for('main.browse') }}" class="row g-2">
             <div class="col-auto">
-                <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+                <select name="sort" class="form-select form-select-sm" data-autosubmit>
                     <option value="newest" {% if sort == 'newest' %}selected{% endif %}>{{ _('sort_newest') }}</option>
                     <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>{{ _('sort_oldest') }}</option>
                     <option value="author_az" {% if sort == 'author_az' %}selected{% endif %}>{{ _('sort_author_az') }}</option>

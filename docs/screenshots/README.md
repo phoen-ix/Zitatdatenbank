@@ -28,9 +28,8 @@ the cards stack.
 ## Browse
 
 All quotes, newest first, 20 per page by default (**Settings → Quotes per Page**). Authors and
-tags link to filtered lists. The sort menu (newest/oldest first, author A-Z/Z-A) currently does not
-apply: the page's Content-Security-Policy blocks its inline `onchange` handler. `?sort=oldest`,
-`author_az` or `author_za` in the URL works.
+tags link to filtered lists. The sort menu re-sorts the list: newest or oldest first, author A-Z
+or Z-A.
 
 <img src="public-browse.png" alt="Browse page: list of quotes with authors, tags and the sort menu" width="800">
 
@@ -118,11 +117,10 @@ Site name (shown in the navigation bar and page titles) and quotes per page (5-1
 
 ## Settings: Themes
 
-Pick one of the 14 themes (animated ones are marked with sparkles) or **Custom Colors** with its
-radio button and save. Then the 11 colors and, for animated themes, typing speed and particle count
-of the active theme can be changed with the color pickers and saved. The page's inline handlers
-(clicking a card outside its radio button, typing a hex value, **Reset to Defaults**) are blocked
-by the Content-Security-Policy and do nothing at the moment.
+Click one of the 14 themes (animated ones are marked with sparkles) or **Custom Colors** and save.
+Then the 11 colors and, for animated themes, typing speed and particle count of the active theme
+can be changed with the color pickers or as hex values and saved. **Reset to Defaults** drops the
+active theme's changes.
 
 <img src="admin-settings-themes.png" alt="Theme settings: theme picker and the color fields" width="800">
 

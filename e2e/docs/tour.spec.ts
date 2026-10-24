@@ -308,6 +308,26 @@ test('admin settings: themes', async () => {
   await shoot(page, 'admin-settings-themes', { fullPage: true })
 })
 
+/* The CSP blocks inline event handlers: these controls are wired up in nonce'd scripts. */
+test('browse: the sort menu applies', async () => {
+  const page = await open(guest, '/browse')
+  await page.locator('select[name=sort]').selectOption('author_az')
+  await expect(page).toHaveURL(/[?&]sort=author_az/)
+})
+
+test('admin settings: theme cards, hex fields and reset work', async () => {
+  const page = await open(admin, '/admin/settings')
+  await page.getByRole('tab', { name: 'Themes' }).click()
+  await page.locator('.theme-card[data-theme=dunkel] > div').first().click() // the preview, not the radio
+  await expect(page.locator('#theme_dunkel')).toBeChecked()
+  await expect(page.locator('#color_navbar')).toHaveValue('#1e1e2e')
+  await page.locator('.color-hex[data-for=color_navbar]').fill('#123456')
+  await expect(page.locator('#color_navbar')).toHaveValue('#123456')
+  await page.locator('.theme-card[data-theme=klassisch] > div').first().click()
+  await page.getByRole('button', { name: 'Reset to Defaults' }).click()
+  await expect(page.locator('#toastContainer')).toContainText('Settings saved.')
+})
+
 test('admin backup', async () => {
   const page = await open(admin, '/admin/backup')
   await heading(page, 'Backup')

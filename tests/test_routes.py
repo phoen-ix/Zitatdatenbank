@@ -427,3 +427,15 @@ def test_login_valid_next_redirect(client, app, make_admin):
     })
     assert response.status_code == 302
     assert '/admin/quotes' in response.headers['Location']
+
+
+def test_templates_have_no_inline_event_handlers():
+    """The CSP (script-src 'self' 'nonce-…', no 'unsafe-hashes') blocks onclick/onchange/…
+    attributes, so they never run: wire controls up in a nonce'd script instead."""
+    import re
+    from pathlib import Path
+    templates = Path(__file__).resolve().parent.parent / 'app' / 'templates'
+    offenders = [f'{p.relative_to(templates)}: {m.group().strip()}'
+                 for p in sorted(templates.rglob('*.html'))
+                 for m in re.finditer(r'\son[a-z]+\s*=', p.read_text())]
+    assert offenders == []

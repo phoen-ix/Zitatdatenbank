@@ -31,9 +31,9 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
   is unset (fresh install, after every restore). It only touches quotes *without* tags (the SQL import
   creates German quotes untagged): Deutsch/German/Quelle: Zitatdatenbank + their `category`. Never let
   it replace existing tags again: that re-tagged the English CSV import as German.
-- **CSP blocks inline event handlers:** `script-src 'self' 'nonce-…'`, no `unsafe-hashes`. Write JS in a
-  `<script nonce="{{ csp_nonce }}">` block with addEventListener. The existing `onclick`/`oninput`
-  (admin/settings.html) and `onchange` (browse.html sort select) attributes never run.
+- **CSP blocks inline event handlers:** `script-src 'self' 'nonce-…'`, no `unsafe-hashes`. Never write
+  `onclick=`/`onchange=`… (tests/test_routes.py fails on them): use a `<script nonce="{{ csp_nonce }}">`
+  block with addEventListener, or base.html's delegated `data-confirm` / `data-autosubmit` attributes.
 - **Secure session cookies** whenever `FLASK_TESTING != 1`: over plain HTTP, login/CSRF/language switch
   work only on localhost.
 - After any write to quotes, tags or settings call `invalidate_stats_cache()` (in-process cache, 5-min TTL,

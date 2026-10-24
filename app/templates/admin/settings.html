@@ -57,7 +57,7 @@
                     <div class="row mb-4">
                         {% for key, t in themes.items() %}
                         <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-3">
-                            <div class="card theme-card {% if current_theme == key %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" onclick="selectTheme('{{ key }}')">
+                            <div class="card theme-card {% if current_theme == key %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" data-theme="{{ key }}">
                                 <div style="height:40px;{% if t.get('preview_css') %}{{ t.preview_css }}{% else %}background-color:{{ t.color_navbar }}{% endif %};border-radius:4px 4px 0 0;"></div>
                                 <div class="card-body p-2 text-center" style="background-color:{{ t.color_bg }};color:{{ t.color_text }}">
                                     <input type="radio" name="theme_name" value="{{ key }}" id="theme_{{ key }}"
@@ -68,7 +68,7 @@
                         </div>
                         {% endfor %}
                         <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-3">
-                            <div class="card theme-card {% if current_theme == 'custom' %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" onclick="selectTheme('custom')">
+                            <div class="card theme-card {% if current_theme == 'custom' %}border-primary border-2{% endif %}" style="cursor:pointer;overflow:hidden" data-theme="custom">
                                 <div style="height:40px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:4px 4px 0 0;"></div>
                                 <div class="card-body p-2 text-center">
                                     <input type="radio" name="theme_name" value="custom" id="theme_custom"
@@ -83,7 +83,7 @@
                     <div id="colorSection">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="mb-0"><i class="bi bi-palette"></i> {{ _('theme_colors') }}</h5>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="resetBtn" onclick="resetToDefaults()">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="resetBtn">
                                 <i class="bi bi-arrow-counterclockwise"></i> {{ _('reset_defaults') }}
                             </button>
                         </div>
@@ -94,7 +94,7 @@
                                 <div class="input-group input-group-sm">
                                     <input type="color" class="form-control form-control-color form-control-sm" id="{{ key }}" name="{{ key }}" value="#000000">
                                     <input type="text" class="form-control form-control-sm color-hex" data-for="{{ key }}" value="#000000"
-                                           oninput="document.getElementById('{{ key }}').value=this.value" maxlength="7" style="max-width:90px">
+                                           maxlength="7" style="max-width:90px">
                                 </div>
                             </div>
                             {% endfor %}
@@ -234,6 +234,17 @@ function resetToDefaults() {
     document.getElementById('resetThemeName').value = name.value;
     document.getElementById('resetForm').submit();
 }
+
+// Inline handlers would be blocked by the CSP: wire everything up here.
+document.querySelectorAll('.theme-card[data-theme]').forEach(function(card) {
+    card.addEventListener('click', function() { selectTheme(card.dataset.theme); });
+});
+document.querySelectorAll('.color-hex').forEach(function(hex) {
+    hex.addEventListener('input', function() {
+        if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) document.getElementById(hex.dataset.for).value = hex.value;
+    });
+});
+document.getElementById('resetBtn').addEventListener('click', resetToDefaults);
 
 // Init on page load
 selectTheme(currentTheme);
