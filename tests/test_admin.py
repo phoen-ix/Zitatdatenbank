@@ -7,6 +7,17 @@ def test_admin_requires_login(client, app):
     assert '/login' in response.headers.get('Location', '')
 
 
+def test_login_returns_to_the_requested_admin_page(client, app, make_admin):
+    from urllib.parse import parse_qs, urlparse
+    with app.app_context():
+        make_admin(username='admin', password='secret')
+    location = client.get('/admin/tags?q=humor').headers['Location']
+    next_page = parse_qs(urlparse(location).query)['next'][0]
+    assert next_page == '/admin/tags?q=humor'
+    response = client.post(f'/login?next={next_page}', data={'username': 'admin', 'password': 'secret'})
+    assert response.headers['Location'] == '/admin/tags?q=humor'
+
+
 def test_login_page(client, app):
     response = client.get('/login')
     assert response.status_code == 200

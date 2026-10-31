@@ -101,7 +101,8 @@ def load_user(user_id):
 @login_manager.unauthorized_handler
 def unauthorized():
     flash(_('login_required'), 'error')
-    return redirect(url_for('auth.login', next=request.url))
+    # Relative: the login only follows a `next` without a host (request.url has one).
+    return redirect(url_for('auth.login', next=request.full_path if request.query_string else request.path))
 
 
 @app.errorhandler(404)
