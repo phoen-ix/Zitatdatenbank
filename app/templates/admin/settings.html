@@ -90,7 +90,7 @@
                         <div class="row">
                             {% for key in color_keys %}
                             <div class="col-md-4 col-lg-3 mb-3">
-                                <label for="{{ key }}" class="form-label small">{{ key.replace('color_', '').replace('_', ' ').title() }}</label>
+                                <label for="{{ key }}" class="form-label small">{{ _(key) }}</label>
                                 <div class="input-group input-group-sm">
                                     <input type="color" class="form-control form-control-color form-control-sm" id="{{ key }}" name="{{ key }}" value="#000000">
                                     <input type="text" class="form-control form-control-sm color-hex" data-for="{{ key }}" value="#000000"

@@ -457,3 +457,10 @@ def test_restore_reruns_tag_migration_only_for_pre_tag_backups(admin_client, mak
     make_quote(tags=tags)
     admin_client.post(RESTORE_URL)
     assert get_setting('tags_migrated') == flag
+
+
+def test_theme_colour_labels_are_translated(admin_client):
+    """They were the setting keys, title-cased: "Navbar", "Bg", "Card Header Bg"."""
+    settings = admin_client.get('/admin/settings').get_data(as_text=True)
+    assert '>Navigationsleiste</label>' in settings and '>Kartenkopf</label>' in settings
+    assert '>Bg</label>' not in settings and '>Navbar</label>' not in settings
