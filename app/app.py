@@ -10,6 +10,7 @@ import click
 from urllib.parse import quote as urlquote, urlparse
 
 from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify, render_template
+from flask_wtf.csrf import CSRFError
 from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash
 
@@ -128,6 +129,17 @@ def ratelimit_handler(e):
     ref = request.referrer
     # Not back to the limited page itself: that request would be limited too, a redirect loop.
     if ref and (urlparse(ref).netloc not in ('', request.host) or urlparse(ref).path == request.path):
+        ref = None
+    return redirect(ref or url_for('main.index'))
+
+
+@app.errorhandler(CSRFError)
+def csrf_error_handler(e):
+    # A missing or expired token (Flask-WTF: 1 h) is a form opened too long ago: say so and
+    # reload it with a fresh token instead of werkzeug's bare English 400 page.
+    flash(_('form_expired'), 'error')
+    ref = request.referrer
+    if ref and urlparse(ref).netloc not in ('', request.host):
         ref = None
     return redirect(ref or url_for('main.index'))
 
