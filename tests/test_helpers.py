@@ -119,3 +119,10 @@ def test_import_service_import(app):
             assert q1.text == 'Test quote one'
         finally:
             os.unlink(path)
+
+
+def test_fast_pagination_links_only_to_known_pages(app):
+    from helpers import FastPagination
+    assert list(FastPagination([], 1, 20, True).iter_pages()) == [1, 2]
+    assert list(FastPagination([], 2, 20, False).iter_pages()) == [1, 2]
+    assert list(FastPagination([], 5, 20, True).iter_pages()) == [4, 5, 6]

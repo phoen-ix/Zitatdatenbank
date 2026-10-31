@@ -142,8 +142,9 @@ class FastPagination:
                     yield num
                     last = num
         else:
+            # Without a page count only the pages up to the next one are known to exist.
             start = max(1, self.page - left_current)
-            end = self.page + right_current + (1 if self.has_next else 0)
+            end = self.page + (1 if self.has_next else 0)
             for p in range(start, end + 1):
                 if p >= 1:
                     yield p
