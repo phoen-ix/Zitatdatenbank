@@ -204,7 +204,7 @@ def tags():
             Tag.name, func.count(quote_tags.c.quote_id).label('count')
         ).join(quote_tags, Tag.id == quote_tags.c.tag_id
         ).group_by(Tag.id).order_by(
-            func.count(quote_tags.c.quote_id).desc()
+            func.count(quote_tags.c.quote_id).desc(), Tag.name  # ties: alphabetical, not as the DB likes
         ).all()
 
     all_tags = get_cached_result('all_tags_with_counts', _load_all_tags)

@@ -79,6 +79,16 @@ def test_tags_page(client, app, make_quote):
     assert b'Liebe' in response.data
 
 
+def test_tags_page_orders_equal_counts_by_name(client, app, make_quote):
+    with app.app_context():
+        for name in ['Zeit', 'Natur', 'Angst']:
+            make_quote(tags=[name])
+        make_quote(tags=['Liebe'])
+        make_quote(tags=['Liebe'])
+    html = client.get('/browse/tags').get_data(as_text=True)
+    assert [html.index(t) for t in ['Liebe', 'Angst', 'Natur', 'Zeit']] == sorted(html.index(t) for t in ['Liebe', 'Angst', 'Natur', 'Zeit'])
+
+
 def test_search_empty(client, app):
     response = client.get('/search')
     assert response.status_code == 200
