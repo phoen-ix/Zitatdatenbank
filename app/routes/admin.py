@@ -42,7 +42,8 @@ def _sync_tags(quote, tag_string):
                 tag = Tag.query.filter_by(name=name).first()
                 if not tag:
                     continue
-        new_tags.append(tag)
+        if tag not in new_tags:  # "a, b, a" (or "Love, love" on MariaDB) would insert one row twice
+            new_tags.append(tag)
     quote.tags = new_tags
 
 

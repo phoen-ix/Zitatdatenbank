@@ -94,6 +94,17 @@ def test_admin_add_quote_post(admin_client, app):
         assert tag_names == ['AnotherTag', 'TestTag']
 
 
+def test_admin_add_quote_with_repeated_tags(admin_client, app):
+    response = admin_client.post('/admin/quotes/add', data={
+        'text': 'Repeated tags', 'author': '', 'tags': 'a, b, a',
+    })
+    assert response.status_code == 302
+    with app.app_context():
+        from models import Quote
+        quote = Quote.query.filter_by(text='Repeated tags').one()
+        assert sorted(t.name for t in quote.tags) == ['a', 'b']
+
+
 def test_admin_add_quote_empty_text(admin_client, app):
     response = admin_client.post('/admin/quotes/add', data={
         'text': '',
