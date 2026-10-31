@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_index_page(client, app):
     response = client.get('/')
     assert response.status_code == 200
@@ -438,6 +441,28 @@ def test_login_valid_next_redirect(client, app, make_admin):
     })
     assert response.status_code == 302
     assert '/admin/quotes' in response.headers['Location']
+
+
+@pytest.mark.parametrize('next_page', ['/\\evil.example/', '///evil.example/', '/%09/evil.example/',
+                                       '//evil.example/', 'https://evil.example/'])
+def test_login_next_stays_on_this_site(client, app, make_admin, next_page):
+    """Browsers take '/\\x', '///x' and '/<tab>/x' as host x; urlparse sees a path."""
+    with app.app_context():
+        make_admin(username='admin', password='secret')
+    response = client.post(f'/login?next={next_page}', data={'username': 'admin', 'password': 'secret'})
+    assert response.status_code == 302
+    assert response.headers['Location'] == '/admin/'
+
+
+@pytest.mark.parametrize('referrer, location', [
+    ('https://evil.example\\@localhost/', '/'),
+    ('/\\evil.example/', '/'),
+    ('http://localhost/quotes?page=2', 'http://localhost/quotes?page=2'),
+    ('/quotes', '/quotes'),
+])
+def test_set_lang_returns_only_to_this_site(client, app, referrer, location):
+    response = client.get('/set-lang/en', headers={'Referer': referrer})
+    assert response.headers['Location'] == location
 
 
 def test_templates_have_no_inline_event_handlers():

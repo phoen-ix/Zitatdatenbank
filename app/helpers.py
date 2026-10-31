@@ -3,8 +3,9 @@ from __future__ import annotations
 import os
 import secrets
 import time
+from urllib.parse import urlparse
 
-from flask import g, session
+from flask import g, request, session
 
 from extensions import db
 from models import Setting
@@ -168,3 +169,25 @@ def is_dark_theme(theme: dict[str, str]) -> bool:
         return luminance < 0.5
     except Exception:
         return False
+
+
+def local_path(url: str | None) -> str | None:
+    """`url` when it is a path on this site, else None.
+
+    Browsers read a backslash as a slash, drop tabs and newlines, and take '//x' and
+    '///x' as host x, so those are refused rather than left to urlparse alone.
+    """
+    url = (url or '').replace('\\', '/')
+    if (urlparse(url).netloc or not url.startswith('/') or url.startswith('//')
+            or any(c < ' ' for c in url)):
+        return None
+    return url
+
+
+def same_site_referrer() -> str | None:
+    """The Referer header when it points at this site, else None."""
+    ref = (request.referrer or '').replace('\\', '/')
+    parts = urlparse(ref)
+    if parts.scheme in ('http', 'https') and parts.netloc == request.host:
+        return ref
+    return local_path(ref)

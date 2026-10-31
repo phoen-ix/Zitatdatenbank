@@ -15,7 +15,8 @@ from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash
 
 from extensions import db, csrf, migrate, limiter, login_manager
-from helpers import _, get_setting, get_active_theme, hex_to_rgb, is_dark_theme, get_cached_result
+from helpers import (_, get_setting, get_active_theme, hex_to_rgb, is_dark_theme, get_cached_result,
+                     same_site_referrer)
 from config import DEFAULT_THEME
 
 
@@ -133,9 +134,9 @@ def ratelimit_handler(e):
     if request.is_json or request.path.startswith('/api/'):
         return jsonify({'status': 'error', 'detail': str(e.description)}), 429
     flash(_('rate_limited'), 'error')
-    ref = request.referrer
+    ref = same_site_referrer()
     # Not back to the limited page itself: that request would be limited too, a redirect loop.
-    if ref and (urlparse(ref).netloc not in ('', request.host) or urlparse(ref).path == request.path):
+    if ref and urlparse(ref).path == request.path:
         ref = None
     return redirect(ref or url_for('main.index'))
 
@@ -145,10 +146,7 @@ def csrf_error_handler(e):
     # A missing or expired token (Flask-WTF: 1 h) is a form opened too long ago: say so and
     # reload it with a fresh token instead of werkzeug's bare English 400 page.
     flash(_('form_expired'), 'error')
-    ref = request.referrer
-    if ref and urlparse(ref).netloc not in ('', request.host):
-        ref = None
-    return redirect(ref or url_for('main.index'))
+    return redirect(same_site_referrer() or url_for('main.index'))
 
 
 @app.context_processor

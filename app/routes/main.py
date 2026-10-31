@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, make_response
 from sqlalchemy import func, or_
@@ -9,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from extensions import db, limiter
 from models import Quote, Tag, quote_tags
-from helpers import _, get_setting, get_cached_stat, get_cached_result, FastPagination
+from helpers import _, get_setting, get_cached_stat, get_cached_result, same_site_referrer, FastPagination
 from config import QUOTES_PER_PAGE
 
 main_bp = Blueprint('main', __name__)
@@ -397,7 +396,4 @@ def health():
 def set_lang(lang):
     if lang in ('de', 'en'):
         session['lang'] = lang
-    ref = request.referrer
-    if ref and urlparse(ref).netloc not in ('', request.host):
-        ref = None
-    return redirect(ref or url_for('main.index'))
+    return redirect(same_site_referrer() or url_for('main.index'))

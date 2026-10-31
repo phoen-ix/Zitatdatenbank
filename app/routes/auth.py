@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from urllib.parse import urlparse
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, current_user
 from werkzeug.security import check_password_hash
 
 from models import AdminUser
-from helpers import _
+from helpers import _, local_path
 from extensions import limiter
 
 auth_bp = Blueprint('auth', __name__)
@@ -26,11 +24,7 @@ def login():
         user = AdminUser.query.filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
-            next_page = request.args.get('next')
-            # Prevent open redirect — only allow relative path URLs
-            if next_page and urlparse(next_page).netloc == '' and next_page.startswith('/'):
-                return redirect(next_page)
-            return redirect(url_for('admin.dashboard'))
+            return redirect(local_path(request.args.get('next')) or url_for('admin.dashboard'))
         flash(_('login_failed'), 'error')
 
     return render_template('auth/login.html')
