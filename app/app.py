@@ -166,10 +166,12 @@ def set_security_headers(response: Response) -> Response:
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     if 'text/html' in response.content_type:
+        # Pages not rendered from a template (werkzeug's error pages) have no nonce.
         nonce = g.get('csp_nonce', '')
+        script_src = f"'self' 'nonce-{nonce}'" if nonce else "'self'"
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            f"script-src 'self' 'nonce-{nonce}'; "
+            f"script-src {script_src}; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data:; "
             "font-src 'self'; "
