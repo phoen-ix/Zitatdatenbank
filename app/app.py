@@ -126,7 +126,8 @@ def ratelimit_handler(e):
         return jsonify({'status': 'error', 'detail': str(e.description)}), 429
     flash(_('rate_limited'), 'error')
     ref = request.referrer
-    if ref and urlparse(ref).netloc not in ('', request.host):
+    # Not back to the limited page itself: that request would be limited too, a redirect loop.
+    if ref and (urlparse(ref).netloc not in ('', request.host) or urlparse(ref).path == request.path):
         ref = None
     return redirect(ref or url_for('main.index'))
 
