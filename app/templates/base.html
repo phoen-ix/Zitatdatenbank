@@ -222,7 +222,8 @@
         });
     })();
     document.addEventListener('click', function(e) {
-        var el = e.target.closest('[data-confirm]');
+        // Forms ask once, on submit (below): a click inside one must not ask a second time.
+        var el = e.target.closest('[data-confirm]:not(form)');
         if (el && !confirm(el.dataset.confirm)) e.preventDefault();
     });
     document.addEventListener('submit', function(e) {
