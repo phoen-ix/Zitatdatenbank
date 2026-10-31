@@ -275,17 +275,18 @@ def test_admin_requires_login(client, app):
         assert response.status_code == 302, f'{path} should redirect'
 
 
-def test_admin_settings_invalid_quotes_per_page(admin_client, app):
+@pytest.mark.parametrize('posted, saved', [('abc', '20'), ('500', '100'), ('1', '5')])
+def test_admin_settings_invalid_quotes_per_page(admin_client, app, posted, saved):
+    """Non-numbers fall back to 20, numbers outside 5-100 are clamped."""
     with app.app_context():
         response = admin_client.post('/admin/settings', data={
             'tab': 'general',
-            'quotes_per_page': 'abc',
+            'quotes_per_page': posted,
             'site_name': 'Test',
         }, follow_redirects=True)
         assert response.status_code == 200
         from helpers import get_setting
-        # Invalid input should default to 20
-        assert get_setting('quotes_per_page') == '20'
+        assert get_setting('quotes_per_page') == saved
 
 
 def test_admin_edit_quote_empty_text_keeps_original(admin_client, app, make_quote):
@@ -404,6 +405,22 @@ def test_admin_theme_override_validates_color(admin_client, app):
         assert get_setting('theme_klassisch_color_navbar') is None
 
 
+def test_admin_theme_override_validates_effects(admin_client):
+    """Effect overrides of the current theme must be whole numbers."""
+    from helpers import get_setting, set_setting
+    set_setting('theme_name', 'hacker')
+    admin_client.post('/admin/settings', data={
+        'tab': 'themes', 'theme_name': 'hacker', 'typing_speed': 'fast', 'particle_count': '7.5',
+    })
+    assert get_setting('theme_hacker_typing_speed') is None
+    assert get_setting('theme_hacker_particle_count') is None
+    admin_client.post('/admin/settings', data={
+        'tab': 'themes', 'theme_name': 'hacker', 'typing_speed': '5', 'particle_count': '7',
+    })
+    assert get_setting('theme_hacker_typing_speed') == '5'
+    assert get_setting('theme_hacker_particle_count') == '7'
+
+
 def test_german_ui_has_no_hard_coded_english(admin_client, app, make_quote, monkeypatch, tmp_path):
     """German is the default language: these labels used to be hard-coded English or borrowed
     the wrong key (authors' "all" button said "Durchsuchen", the tags filter "Zitate suchen...")."""
@@ -453,10 +470,12 @@ def test_restore_reruns_tag_migration_only_for_pre_tag_backups(admin_client, mak
     from helpers import get_setting, set_setting
     monkeypatch.setattr(routes.admin, 'restore_backup', lambda f: (True, 'ok'))
     set_setting('tags_migrated', '1')
+    set_setting('cleanup_version', '5')
     make_quote()
     make_quote(tags=tags)
     admin_client.post(RESTORE_URL)
     assert get_setting('tags_migrated') == flag
+    assert get_setting('cleanup_version') == '0'  # the cleanup re-runs on every restore
 
 
 def test_theme_colour_labels_are_translated(admin_client):
