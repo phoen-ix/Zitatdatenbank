@@ -1,8 +1,8 @@
-import { addQuotes, expect, test, uid } from './support'
+import { addQuotes, apiGet, expect, test, uid } from './support'
 
 /* The JSON API and the health check, against the real MariaDB (FULLTEXT search).
  * /api/random and /api/quotes allow 30 calls a minute per IP: this file makes
- * about a dozen; limits.spec.ts runs one into its limit. */
+ * about a dozen (apiGet waits a 429 out); limits.spec.ts runs one into its limit. */
 
 test('GET /health reports the database', async ({ request }) => {
   const res = await request.get('/health')
@@ -11,7 +11,7 @@ test('GET /health reports the database', async ({ request }) => {
 })
 
 test('GET /api/random returns one quote, with rate-limit headers and no CSP', async ({ request }) => {
-  const res = await request.get('/api/random')
+  const res = await apiGet(request, '/api/random')
   expect(res.status()).toBe(200)
   const q = await res.json()
   expect(Object.keys(q).sort()).toEqual(['author', 'id', 'tags', 'text'])
@@ -31,7 +31,7 @@ test('GET /api/quotes filters by author, tag and text, pages, and caps per_page'
     { text: `Api three ${uid()}`, author: `Api ${w}` },
   ])
   const get = async (params: Record<string, string>) => {
-    const res = await request.get('/api/quotes', { params })
+    const res = await apiGet(request, '/api/quotes', params)
     expect(res.status()).toBe(200)
     return res.json()
   }
@@ -56,12 +56,12 @@ test('GET /api/quotes filters by author, tag and text, pages, and caps per_page'
 test('GET /api/quotes/<id> returns the quote; unknown ids and routes are JSON 404s', async ({ request, adminPage }) => {
   const w = uid()
   const [id] = await addQuotes(adminPage, [{ text: `Single ${w}`, author: `One ${w}` }])
-  const res = await request.get(`/api/quotes/${id}`)
+  const res = await apiGet(request, `/api/quotes/${id}`)
   expect(res.status()).toBe(200)
   expect(await res.json()).toEqual({ id, text: `Single ${w}`, author: `One ${w}`, tags: [] })
   expect(res.headers()['x-ratelimit-limit']).toBe('60')
 
-  const missing = await request.get('/api/quotes/999999999')
+  const missing = await apiGet(request, '/api/quotes/999999999')
   expect(missing.status()).toBe(404)
   expect(await missing.json()).toEqual({ error: 'Quote not found' })
 

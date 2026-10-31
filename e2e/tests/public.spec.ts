@@ -215,6 +215,7 @@ test.describe('authors and tags', () => {
     expect(names.length).toBeLessThan(total)
     await page.getByRole('link', { name: 'Alle', exact: true }).click()
     await expect(page.getByRole('heading', { name: `Alle Autoren (${total})` })).toBeVisible()
+    await page.getByRole('link', { name: 'J', exact: true }).click()
     await page.getByRole('link', { name: /Johann Wolfgang von Goethe/ }).click()
     await expect(page.getByText('Autor: Johann Wolfgang von Goethe')).toBeVisible()
   })

@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { expect, test as base, type BrowserContext, type Page } from '@playwright/test'
+import { expect, test as base, type APIRequestContext, type APIResponse, type BrowserContext, type Page } from '@playwright/test'
 
 import { ADMIN_PASSWORD, ADMIN_USERNAME } from '../docs/seed'
 
@@ -104,6 +104,16 @@ export async function addQuotes(admin: Page, quotes: NewQuote[]): Promise<number
     }
     return ids
   }, quotes)
+}
+
+/** GET a rate-limited API route (30 a minute per IP), waiting a 429 out like a polite client. */
+export async function apiGet(request: APIRequestContext, url: string, params?: Record<string, string>): Promise<APIResponse> {
+  let res!: APIResponse
+  await expect(async () => {
+    res = await request.get(url, { params })
+    expect(res.status()).not.toBe(429)
+  }).toPass({ intervals: [5_000], timeout: 90_000 })
+  return res
 }
 
 export const heading = (page: Page, name: string | RegExp) =>
