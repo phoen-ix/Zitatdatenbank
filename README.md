@@ -97,6 +97,16 @@ flask run      # http://localhost:5000
 
 `flask`-Befehle (auch `flask run`) legen nur die Tabellen an. Die Startsequenz (Admin aus `ADMIN_PASSWORD`, Auto-Import aus `/data`, Bereinigung, Tag-Migration, Suchindizes) läuft nur im Server (gunicorn im Docker-Image).
 
+### E2E-Tests
+
+Die Playwright-Suite in `e2e/tests/` prüft jede Seite und jede Funktion im Browser gegen einen Wegwerf-Stack aus dem Produktions-Image (MariaDB, Compose-Projekt `zitatdatenbank_e2e`, nur `127.0.0.1:${PORT_BASE:-25600}`). Die Abdeckungsliste steht in [`e2e/COVERAGE.md`](e2e/COVERAGE.md).
+
+```bash
+cd e2e && npm ci && npx playwright install chromium && cd ..
+scripts/e2e.sh                      # ganze Suite, Stack wird danach abgebaut
+scripts/e2e.sh --grep backup        # Playwright-Argumente werden durchgereicht
+```
+
 ## CLI-Befehle
 
 Im Ordner `app/` mit `flask …`, im Docker-Stack mit `docker compose exec web flask …`:
@@ -277,6 +287,16 @@ flask run      # http://localhost:5000
 ```
 
 `flask` commands (`flask run` too) only create the tables. The startup sequence (admin from `ADMIN_PASSWORD`, auto-import from `/data`, cleanup, tag migration, search indexes) runs only in the server (gunicorn in the Docker image).
+
+### E2E tests
+
+The Playwright suite in `e2e/tests/` checks every page and feature in a browser against a throwaway stack built from the production image (MariaDB, compose project `zitatdatenbank_e2e`, `127.0.0.1:${PORT_BASE:-25600}` only). The coverage list is [`e2e/COVERAGE.md`](e2e/COVERAGE.md).
+
+```bash
+cd e2e && npm ci && npx playwright install chromium && cd ..
+scripts/e2e.sh                      # whole suite, the stack is torn down afterwards
+scripts/e2e.sh --grep backup        # Playwright arguments are passed through
+```
 
 ## CLI Commands
 

@@ -2,6 +2,7 @@ def test_index_page(client, app):
     response = client.get('/')
     assert response.status_code == 200
     assert b'Zitatdatenbank' in response.data or b'Quote Database' in response.data
+    assert 'Keine Zitate gefunden.' in response.get_data(as_text=True)  # empty database
 
 
 def test_index_with_quote(client, app, make_quote):

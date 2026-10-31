@@ -15,6 +15,8 @@ flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Engl
 flask run
 # docs screenshots: throwaway stack + Playwright tour (needs `npm ci` + chromium in e2e/)
 scripts/docs-screenshots.sh [outdir]    # default docs/screenshots; PORT_BASE=25600
+# e2e suite (e2e/tests, inventory e2e/COVERAGE.md): throwaway stack zitatdatenbank_e2e + Playwright
+scripts/e2e.sh [playwright args]        # e.g. --grep backup; ARTIFACTS=dir keeps report/traces
 ```
 CLI (in `app/`, or `docker compose exec web flask …`): `import-quotes <sql>`,
 `import-csv <csv> --default-tags "a,b"` (columns quote, author, category; category = comma-separated
@@ -48,6 +50,11 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
   127.0.0.1. `docker-compose.e2e.yml` drops every bind mount (no `data.tar.gz` import, anonymous DB volume,
   `.env` ignored via `--env-file /dev/null`); `docker-compose.docs.yml` seeds the gunicorn worker's RNG so
   the home page's random quote is reproducible. Teardown `down -v --remove-orphans --rmi local`.
+- **E2E suite** (`e2e/playwright.config.ts`): projects `setup` (imports the fixtures, saves the admin
+  session to `e2e/.auth/`) → `main` (2 workers; every test adds its own quotes/tags with a `uid()` word)
+  → `global` (settings, themes, backup/restore; 1 worker) → `limits` (runs into the rate limits, last).
+  Limits are per IP and every browser of a run shares one: `/login` (10/min, page views count) and
+  `/search` go through `unlimited()` in `e2e/tests/support.ts`, guests' admin routes are checked as 302s.
 - Demo data = `e2e/docs/fixtures/*.csv` (≤200 rows, sampled from the two real sources, see its README);
   `*.csv` is gitignored everywhere else. Screenshot names are stable once committed; the gallery is
   `docs/screenshots/README.md`.
@@ -61,7 +68,8 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
   `backup_service.py` (mysqldump tar.gz in /backups)
 - `app/routes/` - main.py (public pages, `/api/*`, `/health`, `/set-lang/<lang>`), admin.py, auth.py
 - `app/templates/`, `app/static/css/animations.css` (animated themes; honours prefers-reduced-motion)
-- `e2e/` - own Node package: docs tour (`docs/tour.spec.ts`, `docs/seed.ts`), `playwright.docs.config.ts`
+- `e2e/` - own Node package: docs tour (`docs/tour.spec.ts`, `docs/seed.ts`, `playwright.docs.config.ts`),
+  e2e suite (`tests/`, `playwright.config.ts`, `COVERAGE.md`)
 
 ## Key patterns
 - Tags: many-to-many via `quote_tags` (ON DELETE CASCADE); German quotes carry Deutsch/German/
