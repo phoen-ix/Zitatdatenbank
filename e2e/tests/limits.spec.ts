@@ -12,7 +12,7 @@ test('too many sign-in attempts end on a page that says so', async ({ page }) =>
     await page.getByLabel('Benutzername').fill('admin')
     await page.getByLabel('Passwort').fill('wrong-password')
     await page.getByRole('button', { name: 'Anmelden' }).click()
-    await expect(toast(page)).toContainText(RATE_LIMITED, { timeout: 1 })
+    await expect(toast(page)).toContainText(RATE_LIMITED, { timeout: 100 })
   }).toPass({ intervals: [100], timeout: 60_000 })
   await expect(page.getByText('Zufallszitat')).toBeVisible() // a working page, not a redirect loop
 })
@@ -24,7 +24,7 @@ test('too many searches end on a page that says so', async ({ page }) => {
     if (!(await form.isVisible())) await page.goto('/search?q=life')
     await form.getByRole('searchbox').fill('love')
     await form.getByRole('button', { name: 'Suchen' }).click()
-    await expect(toast(page)).toContainText(RATE_LIMITED, { timeout: 1 })
+    await expect(toast(page)).toContainText(RATE_LIMITED, { timeout: 100 })
   }).toPass({ intervals: [100], timeout: 60_000 })
   await expect(page.getByText('Zufallszitat')).toBeVisible()
 })

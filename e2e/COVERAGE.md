@@ -119,18 +119,18 @@ error (CSP), no 5xx, no failed CSS/JS/font/icon request. Guests' admin routes ar
 | Feature | Test |
 |---|---|
 | Site name (navbar, `<title>`, empty → default), quotes per page (browse, search) | ✅ global › site name and quotes per page apply to every visitor; an empty name falls back |
-| Quotes per page out of range | ✅ global › quotes per page outside 5-100 is blocked by the form (form); server clamp ❌ (c) `tests/test_admin.py::test_admin_settings_invalid_quotes_per_page` |
-| Settings tabs "Allgemein"/"Themen" | ✅ every themes test (`themesTab`) |
+| Quotes per page out of range | ✅ global › quotes per page outside 5-100 is blocked by the form (form); server clamp (500 → 100, 1 → 5, "abc" → 20) ❌ (c) `tests/test_admin.py::test_admin_settings_invalid_quotes_per_page` |
+| Settings tabs "Allgemein"/"Themen" | ✅ global › the settings tabs switch between "Allgemein" and "Themen" |
 | Static theme via the card preview; dark theme colours (body, cards, `theme-color`) | ✅ global › a static theme recolours the site; a dark one keeps text readable |
 | Animated theme: body class, typing animation, typing speed, particle count | ✅ global › an animated theme adds its effects, which can be tuned |
 | Colour override of the current theme (picker ↔ hex field, invalid hex ignored), "Zurücksetzen" | ✅ global › customising the current theme overrides a colour; "Zurücksetzen" restores it |
-| Invalid colour or effect values posted directly | ❌ (c) `tests/test_admin.py::test_admin_theme_override_validates_color` |
+| Invalid colour or effect values posted directly | ❌ (c) `tests/test_admin.py::test_admin_theme_override_validates_color`, `tests/test_admin.py::test_admin_theme_override_validates_effects` |
 | Switching themes drops the new theme's stale overrides | ✅ global › switching to a theme drops the colours once saved for it |
 | "Eigene Farben" (custom theme) | ✅ global › "Eigene Farben" builds a theme from the colour fields |
 | Backup: create, log, download (gzip), restore (confirm dismissed/accepted, later quote gone), delete | ✅ global › backup › create a backup, download it, restore it (later changes are gone), delete it |
 | Backup fails (unwritable `/backups`), restore fails (broken archive) | ✅ global › backup › a backup or restore that fails says why |
 | Unknown/malformed backup names (download 404, delete "Backup nicht gefunden.") | ✅ global › backup › unknown or malformed backup names are 404s |
-| Restore re-runs cleanup / tag migration only for pre-tag backups | ❌ (c) `tests/test_admin.py::test_restore_reruns_tag_migration_only_for_pre_tag_backups` |
+| Restore re-runs cleanup / tag migration only for pre-tag backups | ❌ (c) `tests/test_admin.py::test_restore_reruns_tag_migration_only_for_pre_tag_backups` (asserts `cleanup_version` reset and `tags_migrated`) |
 | Database down: 500 page, `/health` 503 | ✅ global › with the database down, pages show the error page and /health reports it |
 
 ## Rate limits (`limits.spec.ts`, runs last)
@@ -146,4 +146,4 @@ error (CSP), no 5xx, no failed CSS/JS/font/icon request. Guests' admin routes ar
 | Item | |
 |---|---|
 | CLI `import-csv` | ✅ auth.setup › seed the demo quotes and sign the admin in (imports the fixtures through it, `docs/seed.ts`) |
-| CLI `import-quotes`, `cleanup-quotes`, `create-admin`, startup auto-import of `data/data.tar.gz` | ❌ (c) `tests/test_cleanup.py`, `tests/test_startup.py` (the e2e stack has no `/data` on purpose: the 516k-quote import takes minutes) |
+| CLI `import-quotes`, `cleanup-quotes`, `create-admin` (new and password reset), startup auto-import, `entrypoint.sh` extracting `data/data.tar.gz` | ❌ (c) `tests/test_startup.py::test_cli_import_quotes_and_create_admin`, `tests/test_cleanup.py::TestRunFullCleanup::test_cli_command`, `tests/test_startup.py::test_flask_script_runs_cli_commands`, `tests/test_startup.py::test_auto_import_loads_both_sources_into_an_empty_table`, `tests/test_startup.py::test_entrypoint_extracts_the_data_archive`, `tests/test_startup.py::test_entrypoint_stops_on_an_lfs_pointer` (the e2e stack has no `/data` on purpose: the 516k-quote import takes minutes) |

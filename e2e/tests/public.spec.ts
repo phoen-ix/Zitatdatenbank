@@ -23,8 +23,8 @@ test.describe('home', () => {
     // Quotes added by other tests may lack an author or tags: draw until one has both.
     await expect(async () => {
       await page.goto('/')
-      await expect(page.locator('a.quote-author')).toBeVisible({ timeout: 1 })
-      await expect(page.locator('.card-body a.badge').first()).toBeVisible({ timeout: 1 })
+      await expect(page.locator('a.quote-author')).toBeVisible({ timeout: 100 })
+      await expect(page.locator('.card-body a.badge').first()).toBeVisible({ timeout: 100 })
     }).toPass()
     const text = await page.locator('.quote-text').innerText()
     const author = (await page.locator('.quote-author').innerText()).trim()

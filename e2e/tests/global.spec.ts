@@ -58,6 +58,14 @@ test('quotes per page outside 5-100 is blocked by the form', async ({ page }) =>
   await expect(page.locator('#toastContainer .toast')).toHaveCount(0)
 })
 
+test('the settings tabs switch between "Allgemein" and "Themen"', async ({ page }) => {
+  await themesTab(page)
+  await expect(page.getByLabel('Seitenname')).toBeHidden()
+  await page.getByRole('tab', { name: 'Allgemein' }).click()
+  await expect(page.getByLabel('Seitenname')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Thema auswählen' })).toBeHidden()
+})
+
 test('a static theme recolours the site; a dark one keeps text readable', async ({ page }) => {
   await themesTab(page)
   await expect(page.getByLabel('Klassisch')).toBeChecked()

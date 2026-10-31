@@ -63,7 +63,7 @@ export async function unlimited(page: Page, action: () => Promise<unknown>): Pro
 }
 
 /** Inside an unlimited() action: give up this try at once if the last request was limited. */
-export const notLimited = (page: Page) => expect(page.locator('#toastContainer')).not.toContainText(RATE_LIMITED, { timeout: 1 })
+export const notLimited = (page: Page) => expect(page.locator('#toastContainer')).not.toContainText(RATE_LIMITED, { timeout: 100 })
 
 /** Sign in on the login page `page` is about to open (`url`, or a protected page that redirects there). */
 export async function login(page: Page, url = '/login', password = ADMIN_PASSWORD): Promise<void> {
