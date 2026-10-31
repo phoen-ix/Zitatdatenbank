@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto'
 import path from 'node:path'
 
 import { expect, test as base, type APIRequestContext, type APIResponse, type BrowserContext, type Page } from '@playwright/test'
@@ -10,7 +11,7 @@ export { expect, ADMIN_PASSWORD, ADMIN_USERNAME }
 export const ADMIN_STATE = path.join(import.meta.dirname, '../.auth/admin.json')
 
 /** A word only this test uses: letters and digits, so MariaDB's FULLTEXT index finds it. */
-export const uid = (): string => `zq${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
+export const uid = (): string => `zq${Date.now().toString(36)}${randomInt(36 ** 5).toString(36)}`
 
 export const RATE_LIMITED = /Zu viele Anfragen|Too many requests/
 
