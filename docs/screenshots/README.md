@@ -47,7 +47,7 @@ Every author with the number of quotes, alphabetically, with a letter bar to jum
 
 ## Tags
 
-Every tag with the number of quotes, most used first.
+Every tag with the number of quotes, most used first (equally used ones alphabetically).
 
 <img src="public-tags.png" alt="Tag list with quote counts" width="800">
 
