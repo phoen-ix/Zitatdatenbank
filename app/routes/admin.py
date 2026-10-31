@@ -25,7 +25,7 @@ def require_login():
 
 def _sync_tags(quote, tag_string):
     """Parse comma-separated tag string and sync tags to quote."""
-    tag_names = [t.strip() for t in tag_string.split(',') if t.strip()]
+    tag_names = [t.strip()[:200] for t in tag_string.split(',') if t.strip()]  # Tag.name: 200
     new_tags = []
     for name in tag_names:
         tag = Tag.query.filter_by(name=name).first()
@@ -160,7 +160,7 @@ def quotes():
 def add_quote():
     if request.method == 'POST':
         text = request.form.get('text', '').strip()
-        author = request.form.get('author', '').strip()
+        author = request.form.get('author', '').strip()[:500]  # Quote.author: 500
         tags_str = request.form.get('tags', '').strip()
 
         if not text:
@@ -189,7 +189,7 @@ def edit_quote(quote_id):
 
     if request.method == 'POST':
         new_text = request.form.get('text', '').strip()
-        new_author = request.form.get('author', '').strip()
+        new_author = request.form.get('author', '').strip()[:500]
         tags_str = request.form.get('tags', '').strip()
 
         if not new_text:
@@ -252,7 +252,7 @@ def tags_list():
 
 @admin_bp.route('/tags/add', methods=['POST'])
 def add_tag():
-    name = request.form.get('name', '').strip()
+    name = request.form.get('name', '').strip()[:200]
     if name:
         existing = Tag.query.filter_by(name=name).first()
         if existing:
