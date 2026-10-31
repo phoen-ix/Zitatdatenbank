@@ -57,8 +57,8 @@
     <div class="text-center mt-2">
         <form method="GET" action="{{ url_for('main.authors') }}" class="d-inline-flex align-items-center gap-2">
             {% if active_letter %}<input type="hidden" name="letter" value="{{ active_letter }}">{% endif %}
-            <label class="text-muted small">{{ _('go_to_page') }}</label>
-            <input type="number" name="page" class="form-control form-control-sm" style="width:80px"
+            <label for="goto-page" class="text-muted small">{{ _('go_to_page') }}</label>
+            <input type="number" name="page" id="goto-page" class="form-control form-control-sm" style="width:80px"
                    min="1" max="{{ pagination.pages }}" value="{{ pagination.page }}">
             <button class="btn btn-sm btn-outline-primary" type="submit">{{ _('go') }}</button>
         </form>

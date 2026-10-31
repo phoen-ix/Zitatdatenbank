@@ -8,7 +8,7 @@
     <div class="col-md-8">
         <form method="GET" action="{{ url_for('main.browse') }}" class="row g-2">
             <div class="col-auto">
-                <select name="sort" class="form-select form-select-sm" data-autosubmit>
+                <select name="sort" class="form-select form-select-sm" aria-label="{{ _('sort_by') }}" data-autosubmit>
                     <option value="newest" {% if sort == 'newest' %}selected{% endif %}>{{ _('sort_newest') }}</option>
                     <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>{{ _('sort_oldest') }}</option>
                     <option value="author_az" {% if sort == 'author_az' %}selected{% endif %}>{{ _('sort_author_az') }}</option>
@@ -30,7 +30,7 @@
             {% if tag_filter %}Tag: {{ tag_filter }}{% endif %}
         </span>
         <a href="{{ url_for('main.browse') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-x"></i> {{ _('clear_filter') }}
+            <i class="bi bi-x" aria-hidden="true"></i> {{ _('clear_filter') }}
         </a>
         {% endif %}
         {% if pagination.total is not none %}
@@ -48,7 +48,7 @@
             <div>
                 {% if quote.author %}
                 <a href="{{ url_for('main.browse', author=quote.author) }}" class="quote-author text-decoration-none">
-                    <i class="bi bi-person"></i> {{ quote.author }}
+                    <i class="bi bi-person" aria-hidden="true"></i> {{ quote.author }}
                 </a>
                 {% endif %}
                 {% for tag in quote.tags %}
@@ -57,8 +57,8 @@
                 </a>
                 {% endfor %}
             </div>
-            <a href="{{ url_for('main.quote_detail', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-arrow-right"></i>
+            <a href="{{ url_for('main.quote_detail', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary" aria-label="{{ _('quote_detail') }}">
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </a>
         </div>
     </div>
@@ -97,8 +97,8 @@
     <div class="text-center mt-2">
         <form method="GET" action="{{ url_for('main.browse') }}" class="d-inline-flex align-items-center gap-2">
             <input type="hidden" name="sort" value="{{ sort }}">
-            <label class="text-muted small">{{ _('go_to_page') }}</label>
-            <input type="number" name="page" class="form-control form-control-sm" style="width:80px"
+            <label for="goto-page" class="text-muted small">{{ _('go_to_page') }}</label>
+            <input type="number" name="page" id="goto-page" class="form-control form-control-sm" style="width:80px"
                    min="1" max="{{ pagination.pages }}" value="{{ pagination.page }}">
             <button class="btn btn-sm btn-outline-primary" type="submit">{{ _('go') }}</button>
         </form>

@@ -5,15 +5,15 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>{{ _('admin_quotes') }}</h2>
     <a href="{{ url_for('admin.add_quote') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> {{ _('add_quote') }}
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('add_quote') }}
     </a>
 </div>
 
 <form method="GET" class="mb-4">
     <div class="input-group">
         <input type="search" name="q" class="form-control" placeholder="{{ _('search_placeholder') }}" value="{{ search_query }}">
-        <button class="btn btn-outline-primary" type="submit">
-            <i class="bi bi-search"></i>
+        <button class="btn btn-outline-primary" type="submit" aria-label="{{ _('search_button') }}">
+            <i class="bi bi-search" aria-hidden="true"></i>
         </button>
     </div>
 </form>
@@ -46,12 +46,12 @@
                 </td>
                 <td>
                     <a href="{{ url_for('admin.edit_quote', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary" title="{{ _('edit') }}">
-                        <i class="bi bi-pencil"></i>
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
                     </a>
                     <form method="POST" action="{{ url_for('admin.delete_quote', quote_id=quote.id) }}" class="d-inline" data-confirm="{{ _('confirm_delete') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('delete') }}">
-                            <i class="bi bi-trash"></i>
+                            <i class="bi bi-trash" aria-hidden="true"></i>
                         </button>
                     </form>
                 </td>

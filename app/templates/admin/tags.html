@@ -6,7 +6,7 @@
 
 <div class="card mb-4">
     <div class="card-header">
-        <i class="bi bi-plus-lg"></i> {{ _('add_tag') }}
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('add_tag') }}
     </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('admin.add_tag') }}" class="row g-2 align-items-end">
@@ -17,7 +17,7 @@
             </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-plus-lg"></i> {{ _('add_tag') }}
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('add_tag') }}
                 </button>
             </div>
         </form>
@@ -27,8 +27,8 @@
 <form method="GET" action="{{ url_for('admin.tags_list') }}" class="mb-3">
     <div class="input-group">
         <input type="text" class="form-control" name="q" value="{{ search_query }}" placeholder="{{ _('search_tags_placeholder') }}">
-        <button class="btn btn-outline-secondary" type="submit">
-            <i class="bi bi-search"></i>
+        <button class="btn btn-outline-secondary" type="submit" aria-label="{{ _('search_button') }}">
+            <i class="bi bi-search" aria-hidden="true"></i>
         </button>
     </div>
 </form>
@@ -55,7 +55,7 @@
                     <form method="POST" action="{{ url_for('admin.delete_tag', tag_id=tag_id) }}" class="d-inline" data-confirm="{{ _('confirm_delete') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('delete') }}">
-                            <i class="bi bi-trash"></i>
+                            <i class="bi bi-trash" aria-hidden="true"></i>
                         </button>
                     </form>
                 </td>

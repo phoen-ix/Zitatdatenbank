@@ -35,24 +35,24 @@
     <div class="col-md-6">
         <div class="card mb-4">
             <div class="card-header">
-                <i class="bi bi-lightning"></i> {{ _('quick_actions') }}
+                <i class="bi bi-lightning" aria-hidden="true"></i> {{ _('quick_actions') }}
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
                     <a href="{{ url_for('admin.add_quote') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-lg"></i> {{ _('add_quote') }}
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('add_quote') }}
                     </a>
                     <a href="{{ url_for('admin.quotes') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-list"></i> {{ _('admin_quotes') }}
+                        <i class="bi bi-list" aria-hidden="true"></i> {{ _('admin_quotes') }}
                     </a>
                     <a href="{{ url_for('admin.tags_list') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-tags"></i> {{ _('admin_tags') }}
+                        <i class="bi bi-tags" aria-hidden="true"></i> {{ _('admin_tags') }}
                     </a>
                     <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-gear"></i> {{ _('admin_settings') }}
+                        <i class="bi bi-gear" aria-hidden="true"></i> {{ _('admin_settings') }}
                     </a>
                     <a href="{{ url_for('admin.backup') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-download"></i> {{ _('admin_backup') }}
+                        <i class="bi bi-download" aria-hidden="true"></i> {{ _('admin_backup') }}
                     </a>
                 </div>
             </div>
@@ -62,7 +62,7 @@
     <div class="col-md-6">
         <div class="card mb-4">
             <div class="card-header">
-                <i class="bi bi-clock-history"></i> {{ _('recent_quotes') }}
+                <i class="bi bi-clock-history" aria-hidden="true"></i> {{ _('recent_quotes') }}
             </div>
             <div class="list-group list-group-flush">
                 {% for q in recent_quotes %}

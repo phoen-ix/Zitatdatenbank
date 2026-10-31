@@ -124,9 +124,10 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
-                <i class="bi bi-quote"></i> {{ site_name }}
+                <i class="bi bi-quote" aria-hidden="true"></i> {{ site_name }}
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="{{ _('toggle_navigation') }}">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -149,8 +150,8 @@
                         <input class="form-control" type="search" name="q"
                                placeholder="{{ _('search_placeholder') }}"
                                value="{{ request.args.get('q', '') if request.endpoint == 'main.search' else '' }}">
-                        <button class="btn btn-outline-light" type="submit">
-                            <i class="bi bi-search"></i>
+                        <button class="btn btn-outline-light" type="submit" aria-label="{{ _('search_button') }}">
+                            <i class="bi bi-search" aria-hidden="true"></i>
                         </button>
                     </div>
                 </form>
@@ -185,7 +186,7 @@
                     <div class="toast align-items-center text-bg-{{ 'success' if category == 'success' else 'danger' }} border-0" role="alert" data-bs-delay="4000">
                         <div class="d-flex">
                             <div class="toast-body">{{ message }}</div>
-                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="{{ _('close') }}"></button>
                         </div>
                     </div>
                 {% endfor %}

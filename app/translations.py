@@ -158,6 +158,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     'next': {'de': 'Weiter', 'en': 'Next'},
     'go_to_page': {'de': 'Gehe zu Seite', 'en': 'Go to page'},
     'go': {'de': 'Los', 'en': 'Go'},
+    'toggle_navigation': {'de': 'Navigation umschalten', 'en': 'Toggle navigation'},
+    'close': {'de': 'Schließen', 'en': 'Close'},
     'footer_text': {'de': 'Zitatdatenbank', 'en': 'Quote Database'},
     'id': {'de': 'Nr.', 'en': 'No.'},
     'page_not_found': {'de': 'Seite nicht gefunden.', 'en': 'Page not found.'},

@@ -14,7 +14,7 @@
     <div class="input-group">
         <input type="search" name="q" class="form-control" placeholder="{{ _('search_placeholder') }}" value="{{ query }}">
         <button class="btn btn-primary" type="submit">
-            <i class="bi bi-search"></i> {{ _('search_button') }}
+            <i class="bi bi-search" aria-hidden="true"></i> {{ _('search_button') }}
         </button>
     </div>
 </form>
@@ -31,7 +31,7 @@
             <div>
                 {% if quote.author %}
                 <a href="{{ url_for('main.browse', author=quote.author) }}" class="quote-author text-decoration-none">
-                    <i class="bi bi-person"></i> {{ quote.author }}
+                    <i class="bi bi-person" aria-hidden="true"></i> {{ quote.author }}
                 </a>
                 {% endif %}
                 {% for tag in quote.tags %}
@@ -40,8 +40,8 @@
                 </a>
                 {% endfor %}
             </div>
-            <a href="{{ url_for('main.quote_detail', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-arrow-right"></i>
+            <a href="{{ url_for('main.quote_detail', quote_id=quote.id) }}" class="btn btn-sm btn-outline-primary" aria-label="{{ _('quote_detail') }}">
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </a>
         </div>
     </div>

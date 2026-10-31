@@ -6,9 +6,9 @@
     <div class="col-lg-8">
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-chat-quote"></i> {{ _('random_quote') }}</span>
+                <span><i class="bi bi-chat-quote" aria-hidden="true"></i> {{ _('random_quote') }}</span>
                 <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-arrow-repeat"></i> {{ _('new_random') }}
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> {{ _('new_random') }}
                 </a>
             </div>
             <div class="card-body">
@@ -34,7 +34,7 @@
                 {% endif %}
                 <div class="mt-3">
                     <a href="{{ url_for('main.quote_detail', quote_id=random_quote.id) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-arrow-right"></i> {{ _('quote_detail') }}
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i> {{ _('quote_detail') }}
                     </a>
                 </div>
                 {% else %}
@@ -47,7 +47,7 @@
     <div class="col-lg-4">
         <div class="card mb-4">
             <div class="card-header">
-                <i class="bi bi-bar-chart"></i> {{ _('site_title') }}
+                <i class="bi bi-bar-chart" aria-hidden="true"></i> {{ _('site_title') }}
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
@@ -69,13 +69,13 @@
             <div class="card-body">
                 <div class="d-grid gap-2">
                     <a href="{{ url_for('main.browse') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-book"></i> {{ _('browse_quotes') }}
+                        <i class="bi bi-book" aria-hidden="true"></i> {{ _('browse_quotes') }}
                     </a>
                     <a href="{{ url_for('main.authors') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-people"></i> {{ _('all_authors') }}
+                        <i class="bi bi-people" aria-hidden="true"></i> {{ _('all_authors') }}
                     </a>
                     <a href="{{ url_for('main.tags') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-tags"></i> {{ _('all_tags') }}
+                        <i class="bi bi-tags" aria-hidden="true"></i> {{ _('all_tags') }}
                     </a>
                 </div>
             </div>
