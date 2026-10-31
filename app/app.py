@@ -118,7 +118,14 @@ def internal_error_handler(e):
     logger.error('Internal server error: %s', e)
     if request.path.startswith('/api/'):
         return jsonify({'status': 'error', 'detail': 'Internal server error'}), 500
-    return render_template('errors/500.html'), 500
+    db.session.rollback()
+    try:
+        return render_template('errors/500.html'), 500
+    except Exception:
+        # The database is down: errors/500.html (base.html) cannot read theme, site name or user.
+        db.session.rollback()
+        page = app.jinja_env.get_template('errors/500_plain.html')
+        return page.render(_=_, lang=session.get('lang', 'de')), 500
 
 
 @app.errorhandler(429)

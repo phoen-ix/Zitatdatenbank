@@ -453,3 +453,16 @@ def test_dark_theme_colors_card_text_and_placeholders(client, app):
     set_setting('theme_name', 'klassisch')
     invalidate_stats_cache()
     assert '.card { color: var(--theme-text); }' not in client.get('/').get_data(as_text=True)
+
+
+def test_500_page_renders_without_the_database(client, app, monkeypatch):
+    """base.html needs the database (theme, site name, user): with it down, the 500 page itself failed."""
+    import sys
+
+    def down():
+        raise RuntimeError('database down')
+    monkeypatch.setitem(app.config, 'PROPAGATE_EXCEPTIONS', False)
+    monkeypatch.setattr(sys.modules['app'], 'get_active_theme', down)
+    response = client.get('/credits')
+    assert response.status_code == 500
+    assert 'Ein interner Fehler ist aufgetreten.' in response.get_data(as_text=True)
