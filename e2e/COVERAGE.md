@@ -1,7 +1,7 @@
 # E2E coverage
 
 Inventory of every user-facing route, feature, form, action and error state, and the test that covers it
-(`e2e/tests/<spec> › <title>`, run with `scripts/e2e.sh`). ❌ rows give one reason: (a) needs hardware or an
+(`<spec> › [<describe> ›] <title>` for `e2e/tests/<spec>.spec.ts`; `sweep › guest/admin` = the four sweep tests; run with `scripts/e2e.sh`). ❌ rows give one reason: (a) needs hardware or an
 external account, (b) irreversible external effect, (c) covered at another layer (test cited), (d) cannot be
 driven, (e) time-box overrun.
 
@@ -10,7 +10,7 @@ Extracted 2026-10-31 from:
 - forms, buttons, confirms, menus: `grep -rnE '<form|<button|data-confirm|data-autosubmit|data-bs-toggle' app/templates`
 - messages and error states: `grep -nE "flash\(|errorhandler|abort\(" app/app.py app/routes/*.py`
 
-**120 items (55 route × role cells, 65 features, forms, actions and error states): 113 ✅, 7 ❌, all (c).** Roles: guest (not signed in) and admin (the only account type).
+**122 items (55 route × role cells, 67 features, forms, actions and error states): 115 ✅, 7 ❌, all (c).** Roles: guest (not signed in) and admin (the only account type).
 Languages: German (default) and English.
 
 ## Routes × roles (breadth: `sweep.spec.ts`)
@@ -38,14 +38,14 @@ error (CSP), no 5xx, no failed CSS/JS/font/icon request. Guests' admin routes ar
 | `/admin/quotes/<id>/edit` | GET, POST | ✅ sweep › guest (302) | ✅ admin › quotes › edit a quote: new text, author and tags; a blank text keeps the old one |
 | `/admin/quotes/<id>/delete` | POST | ✅ auth › a guest cannot change anything by posting to an admin action | ✅ admin › quotes › delete a quote after one confirmation; dismissing it keeps the quote |
 | `/admin/tags` (+ `q`, `page`) | GET | ✅ sweep › guest (302) | ✅ sweep › admin |
-| `/admin/tags/add` | POST | ✅ (same `before_request` guard as every admin route; auth › a guest cannot change anything …) | ✅ admin › tags › add a tag; a duplicate is refused; the filter finds it; delete it |
-| `/admin/tags/<id>/delete` | POST | ✅ (guard, see above) | ✅ admin › tags › add a tag; … delete it |
+| `/admin/tags/add` | POST | ✅ (same `before_request` guard as every admin route; auth › a guest cannot change anything by posting to an admin action) | ✅ admin › tags › add a tag; a duplicate is refused; the filter finds it; delete it |
+| `/admin/tags/<id>/delete` | POST | ✅ (guard, see above) | ✅ admin › tags › add a tag; a duplicate is refused; the filter finds it; delete it |
 | `/admin/settings` | GET, POST | ✅ sweep › guest (302) | ✅ global › site name and quotes per page apply to every visitor; an empty name falls back |
 | `/admin/backup` | GET | ✅ sweep › guest (302) | ✅ sweep › admin |
 | `/admin/backup/create` | POST | ✅ (guard, see above) | ✅ global › backup › create a backup, download it, restore it (later changes are gone), delete it |
-| `/admin/backup/<f>/download` | GET | ✅ (guard, see above) | ✅ global › backup › create a backup, download it, … |
-| `/admin/backup/<f>/restore` | POST | ✅ (guard, see above) | ✅ global › backup › create a backup, download it, restore it … |
-| `/admin/backup/<f>/delete` | POST | ✅ (guard, see above) | ✅ global › backup › create a backup, … delete it |
+| `/admin/backup/<f>/download` | GET | ✅ (guard, see above) | ✅ global › backup › create a backup, download it, restore it (later changes are gone), delete it |
+| `/admin/backup/<f>/restore` | POST | ✅ (guard, see above) | ✅ global › backup › create a backup, download it, restore it (later changes are gone), delete it |
+| `/admin/backup/<f>/delete` | POST | ✅ (guard, see above) | ✅ global › backup › create a backup, download it, restore it (later changes are gone), delete it |
 | `/api/random` | GET | ✅ api › GET /api/random returns one quote, with rate-limit headers and no CSP | — (same for everyone) |
 | `/api/quotes` | GET | ✅ api › GET /api/quotes filters by author, tag and text, pages, and caps per_page | — |
 | `/api/quotes/<id>` | GET | ✅ api › GET /api/quotes/<id> returns the quote; unknown ids and routes are JSON 404s | — |
@@ -77,6 +77,8 @@ error (CSP), no 5xx, no failed CSS/JS/font/icon request. Guests' admin routes ar
 | Search: FULLTEXT operators, `%`/`_`, markup in the query | ✅ public › search › FULLTEXT operators and markup in a query are plain text |
 | Quote detail: text, `//` line break, author, tags, number, more by the author, back link | ✅ public › quote detail › shows text, author, tags, number, more quotes by the author, and a way back |
 | Quote detail: no author ("Unbekannt"), markup stays text | ✅ public › quote detail › a quote without author says "Unbekannt"; markup in a quote stays text |
+| Quote detail: unknown number (404 + message) | ✅ public › quote detail › an unknown quote number is a 404 with a message |
+| Unknown page: 404 page with a way home | ✅ public › an unknown page is a 404 with a way home |
 | Credits: both sources, licences, external links (`_blank`, `noopener`) | ✅ public › credits name both sources and licences, links open in a new tab |
 | Language switch DE/EN (keeps the page, session-wide, unknown language ignored, `<html lang>`) | ✅ public › the language switch keeps the page and lasts for the session |
 | Language switch: foreign Referer not followed | ❌ (c) `tests/test_routes.py::test_set_lang_no_open_redirect` |
@@ -143,5 +145,5 @@ error (CSP), no 5xx, no failed CSS/JS/font/icon request. Guests' admin routes ar
 
 | Item | |
 |---|---|
-| CLI `import-csv` | ✅ every run: `auth.setup.ts` seeds through it (`docs/seed.ts`) |
+| CLI `import-csv` | ✅ auth.setup › seed the demo quotes and sign the admin in (imports the fixtures through it, `docs/seed.ts`) |
 | CLI `import-quotes`, `cleanup-quotes`, `create-admin`, startup auto-import of `data/data.tar.gz` | ❌ (c) `tests/test_cleanup.py`, `tests/test_startup.py` (the e2e stack has no `/data` on purpose: the 516k-quote import takes minutes) |
