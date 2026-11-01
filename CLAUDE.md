@@ -1,7 +1,7 @@
 # Zitatdatenbank - CLAUDE.md
 
-Bilingual (DE/EN) Flask app for browsing, searching and managing ~516k quotes (24.6k German from the
-datenbörse.net MySQL dump `zitate.sql`, 500k English from the Kaggle `quotes.csv`). Flask 3.1 +
+Bilingual (DE/EN) Flask app for browsing, searching and managing ~517k quotes after cleanup (24.6k German from
+the datenbörse.net MySQL dump `zitate.sql`, 493k of the 500k English from the Kaggle `quotes.csv`). Flask 3.1 +
 SQLAlchemy/Login/WTF/Limiter/Migrate, MariaDB 12.3 (SQLite in tests), Bootstrap 5.3 + Bootstrap Icons
 self-hosted, gunicorn in Docker. README.md (German first, then English) is the user doc.
 
