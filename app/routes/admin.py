@@ -2,17 +2,26 @@ from __future__ import annotations
 
 import re
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_from_directory, abort
+from flask import Blueprint, abort, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import login_required
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
+from backup_service import delete_backup_file, list_backups, restore_backup, run_backup
+from config import ADMIN_QUOTES_PER_PAGE, ALL_THEME_KEYS, BACKUP_DIR, COLOR_KEYS, DEFAULT_THEME, EFFECT_KEYS, THEMES
 from extensions import db
-from models import Quote, Tag, BackupLog, Setting, quote_tags
-from helpers import _, get_setting, set_setting, get_theme_overrides, get_cached_stat, invalidate_stats_cache, get_cached_result, FastPagination
-from config import ADMIN_QUOTES_PER_PAGE, THEMES, DEFAULT_THEME, BACKUP_DIR, COLOR_KEYS, EFFECT_KEYS, ALL_THEME_KEYS
-from backup_service import run_backup, restore_backup, list_backups, delete_backup_file
+from helpers import (
+    FastPagination,
+    _,
+    get_cached_result,
+    get_cached_stat,
+    get_setting,
+    get_theme_overrides,
+    invalidate_stats_cache,
+    set_setting,
+)
+from models import BackupLog, Quote, Setting, Tag, quote_tags
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -49,22 +58,27 @@ def _sync_tags(quote, tag_string):
 
 @admin_bp.route('/')
 def dashboard():
-    total_quotes = get_cached_stat('total_quotes',
-        lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
-    total_authors = get_cached_stat('total_authors',
-        lambda: db.session.query(func.count(func.distinct(Quote.author))).filter(
-            Quote.author != '', Quote.author.isnot(None)
-        ).scalar() or 0)
-    total_tags = get_cached_stat('total_tags',
-        lambda: db.session.query(func.count(Tag.id)).scalar() or 0)
+    total_quotes = get_cached_stat('total_quotes', lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
+    total_authors = get_cached_stat(
+        'total_authors',
+        lambda: (
+            db.session.query(func.count(func.distinct(Quote.author)))
+            .filter(Quote.author != '', Quote.author.isnot(None))
+            .scalar()
+            or 0
+        ),
+    )
+    total_tags = get_cached_stat('total_tags', lambda: db.session.query(func.count(Tag.id)).scalar() or 0)
 
     recent_quotes = Quote.query.options(selectinload(Quote.tags)).order_by(Quote.id.desc()).limit(10).all()
 
-    return render_template('admin/dashboard.html',
-                           total_quotes=total_quotes,
-                           total_authors=total_authors,
-                           total_tags=total_tags,
-                           recent_quotes=recent_quotes)
+    return render_template(
+        'admin/dashboard.html',
+        total_quotes=total_quotes,
+        total_authors=total_authors,
+        total_tags=total_tags,
+        recent_quotes=recent_quotes,
+    )
 
 
 @admin_bp.route('/quotes')
@@ -79,6 +93,7 @@ def quotes():
     query = Quote.query.options(selectinload(Quote.tags))
     if q:
         from routes.main import _escape_like, _sanitize_fulltext
+
         like_pattern = f'%{_escape_like(q)}%'
 
         # Use cached tag map for fast tag matching
@@ -101,9 +116,9 @@ def quotes():
                 conditions = [Quote.text.ilike(like_pattern), Quote.author.ilike(like_pattern)]
 
         if matching_tag_ids:
-            tag_subquery = db.session.query(quote_tags.c.quote_id).filter(
-                quote_tags.c.tag_id.in_(matching_tag_ids)
-            ).subquery()
+            tag_subquery = (
+                db.session.query(quote_tags.c.quote_id).filter(quote_tags.c.tag_id.in_(matching_tag_ids)).subquery()
+            )
             conditions.append(Quote.id.in_(db.session.query(tag_subquery.c.quote_id)))
 
         query = query.filter(db.or_(*conditions))
@@ -112,13 +127,11 @@ def quotes():
     use_keyset = not q
 
     if use_keyset and cursor is not None:
-        going_forward = (cursor_dir != 'prev')
+        going_forward = cursor_dir != 'prev'
         if going_forward:
-            items = query.filter(Quote.id < cursor).order_by(
-                Quote.id.desc()).limit(ADMIN_QUOTES_PER_PAGE + 1).all()
+            items = query.filter(Quote.id < cursor).order_by(Quote.id.desc()).limit(ADMIN_QUOTES_PER_PAGE + 1).all()
         else:
-            items = query.filter(Quote.id > cursor).order_by(
-                Quote.id.asc()).limit(ADMIN_QUOTES_PER_PAGE + 1).all()
+            items = query.filter(Quote.id > cursor).order_by(Quote.id.asc()).limit(ADMIN_QUOTES_PER_PAGE + 1).all()
             items = items[:ADMIN_QUOTES_PER_PAGE]
             items.reverse()
 
@@ -128,8 +141,7 @@ def quotes():
         else:
             has_more = True
 
-        total = get_cached_stat('total_quotes',
-            lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
+        total = get_cached_stat('total_quotes', lambda: db.session.query(func.count(Quote.id)).scalar() or 0)
         total_pages = max(1, (total + ADMIN_QUOTES_PER_PAGE - 1) // ADMIN_QUOTES_PER_PAGE)
 
         pagination = FastPagination(items, page, ADMIN_QUOTES_PER_PAGE, has_more)
@@ -149,11 +161,13 @@ def quotes():
         pagination = query.paginate(page=page, per_page=ADMIN_QUOTES_PER_PAGE, error_out=False)
         items = pagination.items
 
-    return render_template('admin/quotes.html',
-                           pagination=pagination,
-                           quotes=items if use_keyset or q else pagination.items,
-                           search_query=q,
-                           use_keyset=use_keyset)
+    return render_template(
+        'admin/quotes.html',
+        pagination=pagination,
+        quotes=items if use_keyset or q else pagination.items,
+        search_query=q,
+        use_keyset=use_keyset,
+    )
 
 
 @admin_bp.route('/quotes/add', methods=['GET', 'POST'])
@@ -165,8 +179,7 @@ def add_quote():
 
         if not text:
             flash(_('quote_text_required'), 'error')
-            return render_template('admin/quote_form.html', quote=None,
-                                   form_data=request.form)
+            return render_template('admin/quote_form.html', quote=None, form_data=request.form)
 
         quote = Quote(text=text, author=author)
         db.session.add(quote)
@@ -194,8 +207,7 @@ def edit_quote(quote_id):
 
         if not new_text:
             flash(_('quote_text_required'), 'error')
-            return render_template('admin/quote_form.html', quote=quote,
-                                   form_data=request.form)
+            return render_template('admin/quote_form.html', quote=quote, form_data=request.form)
 
         quote.text = new_text
         quote.author = new_author
@@ -227,10 +239,13 @@ def tags_list():
 
     # Cache the full tag list with counts (sorted by name for admin)
     def _load_admin_tags():
-        return db.session.query(
-            Tag.id, Tag.name, func.count(quote_tags.c.quote_id).label('count')
-        ).outerjoin(quote_tags, Tag.id == quote_tags.c.tag_id
-        ).group_by(Tag.id).order_by(Tag.name).all()
+        return (
+            db.session.query(Tag.id, Tag.name, func.count(quote_tags.c.quote_id).label('count'))
+            .outerjoin(quote_tags, Tag.id == quote_tags.c.tag_id)
+            .group_by(Tag.id)
+            .order_by(Tag.name)
+            .all()
+        )
 
     all_tags = get_cached_result('admin_tags_with_counts', _load_admin_tags)
 
@@ -243,11 +258,11 @@ def tags_list():
 
     total = len(filtered)
     total_pages = max(1, (total + per_page - 1) // per_page)
-    tags_page = filtered[(page - 1) * per_page: page * per_page]
+    tags_page = filtered[(page - 1) * per_page : page * per_page]
 
-    return render_template('admin/tags.html', tags=tags_page,
-                           page=page, total_pages=total_pages, total=total,
-                           search_query=q)
+    return render_template(
+        'admin/tags.html', tags=tags_page, page=page, total_pages=total_pages, total=total, search_query=q
+    )
 
 
 @admin_bp.route('/tags/add', methods=['POST'])
@@ -291,7 +306,7 @@ def settings():
             try:
                 qpp = int(request.form.get('quotes_per_page', '20'))
                 qpp = max(5, min(qpp, 100))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 qpp = 20
             set_setting('quotes_per_page', str(qpp), commit=False)
             site_name = request.form.get('site_name', 'Zitatdatenbank').strip()[:100]
@@ -307,9 +322,7 @@ def settings():
                 set_setting('theme_name', theme_name, commit=False)
                 theme_changed = theme_name != previous_theme
                 if theme_changed and theme_name in THEMES:
-                    stale = Setting.query.filter(
-                        Setting.key.like(f'theme_{theme_name}_%')
-                    ).all()
+                    stale = Setting.query.filter(Setting.key.like(f'theme_{theme_name}_%')).all()
                     for row in stale:
                         db.session.delete(row)
                 if theme_name == 'custom':
@@ -342,9 +355,7 @@ def settings():
         elif tab == 'reset_theme':
             theme_name = request.form.get('theme_name', '')
             if theme_name in THEMES:
-                rows = Setting.query.filter(
-                    Setting.key.like(f'theme_{theme_name}_%')
-                ).all()
+                rows = Setting.query.filter(Setting.key.like(f'theme_{theme_name}_%')).all()
                 for row in rows:
                     db.session.delete(row)
                 db.session.commit()
@@ -360,15 +371,17 @@ def settings():
     for key in COLOR_KEYS:
         custom_colors[key] = get_setting(f'custom_{key}', THEMES[DEFAULT_THEME].get(key, ''))
 
-    return render_template('admin/settings.html',
-                           themes=THEMES,
-                           current_theme=current_theme,
-                           custom_colors=custom_colors,
-                           overrides=overrides,
-                           color_keys=COLOR_KEYS,
-                           effect_keys=EFFECT_KEYS,
-                           quotes_per_page=get_setting('quotes_per_page', '20'),
-                           site_name_val=get_setting('site_name', 'Zitatdatenbank'))
+    return render_template(
+        'admin/settings.html',
+        themes=THEMES,
+        current_theme=current_theme,
+        custom_colors=custom_colors,
+        overrides=overrides,
+        color_keys=COLOR_KEYS,
+        effect_keys=EFFECT_KEYS,
+        quotes_per_page=get_setting('quotes_per_page', '20'),
+        site_name_val=get_setting('site_name', 'Zitatdatenbank'),
+    )
 
 
 @admin_bp.route('/backup')

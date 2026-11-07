@@ -9,6 +9,7 @@ hero, English home, phone) show Schiller's "Alles wiederholt sich im Leben",
 Einstein's bicycle and Franklin's candle. Re-pick the seed when the fixtures or
 that order change.
 """
+
 import random
 
 

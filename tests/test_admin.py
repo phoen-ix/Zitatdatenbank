@@ -1,14 +1,9 @@
 import pytest
 
 
-def test_admin_requires_login(client, app):
-    response = client.get('/admin/')
-    assert response.status_code == 302
-    assert '/login' in response.headers.get('Location', '')
-
-
 def test_login_returns_to_the_requested_admin_page(client, app, make_admin):
     from urllib.parse import parse_qs, urlparse
+
     with app.app_context():
         make_admin(username='admin', password='secret')
     location = client.get('/admin/tags?q=humor').headers['Location']
@@ -26,26 +21,35 @@ def test_login_page(client, app):
 def test_login_success(client, app, make_admin):
     with app.app_context():
         make_admin(username='admin', password='secret')
-    response = client.post('/login', data={
-        'username': 'admin',
-        'password': 'secret',
-    }, follow_redirects=True)
+    response = client.post(
+        '/login',
+        data={
+            'username': 'admin',
+            'password': 'secret',
+        },
+        follow_redirects=True,
+    )
     assert response.status_code == 200
 
 
 def test_login_failure(client, app, make_admin):
     with app.app_context():
         make_admin(username='admin', password='secret')
-    response = client.post('/login', data={
-        'username': 'admin',
-        'password': 'wrong',
-    }, follow_redirects=True)
+    response = client.post(
+        '/login',
+        data={
+            'username': 'admin',
+            'password': 'wrong',
+        },
+        follow_redirects=True,
+    )
     assert response.status_code == 200
 
 
 def test_login_checks_a_hash_for_unknown_users(client, app, monkeypatch):
     """Unknown usernames still pay for a hash check: login timing must not reveal accounts."""
     import routes.auth as auth
+
     checked = []
     monkeypatch.setattr(auth, 'check_password_hash', lambda h, p: checked.append(h) or False)
     client.post('/login', data={'username': 'nobody', 'password': 'x'})
@@ -99,14 +103,19 @@ def test_admin_add_quote_get(admin_client, app):
 
 def test_admin_add_quote_post(admin_client, app):
     with app.app_context():
-        response = admin_client.post('/admin/quotes/add', data={
-            'text': 'New admin quote',
-            'author': 'TestAuthor',
-            'tags': 'TestTag, AnotherTag',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/quotes/add',
+            data={
+                'text': 'New admin quote',
+                'author': 'TestAuthor',
+                'tags': 'TestTag, AnotherTag',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
         from models import Quote
+
         q = Quote.query.filter_by(author='TestAuthor').first()
         assert q is not None
         assert q.text == 'New admin quote'
@@ -115,21 +124,31 @@ def test_admin_add_quote_post(admin_client, app):
 
 
 def test_admin_add_quote_with_repeated_tags(admin_client, app):
-    response = admin_client.post('/admin/quotes/add', data={
-        'text': 'Repeated tags', 'author': '', 'tags': 'a, b, a',
-    })
+    response = admin_client.post(
+        '/admin/quotes/add',
+        data={
+            'text': 'Repeated tags',
+            'author': '',
+            'tags': 'a, b, a',
+        },
+    )
     assert response.status_code == 302
     with app.app_context():
         from models import Quote
+
         quote = Quote.query.filter_by(text='Repeated tags').one()
         assert sorted(t.name for t in quote.tags) == ['a', 'b']
 
 
 def test_admin_add_quote_empty_text(admin_client, app):
-    response = admin_client.post('/admin/quotes/add', data={
-        'text': '',
-        'author': 'TestAuthor',
-    }, follow_redirects=True)
+    response = admin_client.post(
+        '/admin/quotes/add',
+        data={
+            'text': '',
+            'author': 'TestAuthor',
+        },
+        follow_redirects=True,
+    )
     assert response.status_code == 200
 
 
@@ -139,15 +158,20 @@ def test_admin_edit_quote(admin_client, app, make_quote):
         quote_id = q.id
 
     with app.app_context():
-        response = admin_client.post(f'/admin/quotes/{quote_id}/edit', data={
-            'text': 'Updated text',
-            'author': 'NewAuthor',
-            'tags': 'NewTag',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            f'/admin/quotes/{quote_id}/edit',
+            data={
+                'text': 'Updated text',
+                'author': 'NewAuthor',
+                'tags': 'NewTag',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
-        from models import Quote
         from extensions import db
+        from models import Quote
+
         updated = db.session.get(Quote, quote_id)
         assert updated.text == 'Updated text'
         assert updated.author == 'NewAuthor'
@@ -164,8 +188,9 @@ def test_admin_delete_quote(admin_client, app, make_quote):
     assert response.status_code == 200
 
     with app.app_context():
-        from models import Quote
         from extensions import db
+        from models import Quote
+
         assert db.session.get(Quote, quote_id) is None
 
 
@@ -179,12 +204,17 @@ def test_admin_tags_list(admin_client, app, make_quote):
 
 def test_admin_add_tag(admin_client, app):
     with app.app_context():
-        response = admin_client.post('/admin/tags/add', data={
-            'name': 'NewTag',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/tags/add',
+            data={
+                'name': 'NewTag',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
         from models import Tag
+
         tag = Tag.query.filter_by(name='NewTag').first()
         assert tag is not None
 
@@ -193,9 +223,13 @@ def test_admin_add_duplicate_tag(admin_client, app, make_quote):
     with app.app_context():
         make_quote(tags=['Existing'])
     with app.app_context():
-        response = admin_client.post('/admin/tags/add', data={
-            'name': 'Existing',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/tags/add',
+            data={
+                'name': 'Existing',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
 
@@ -203,6 +237,7 @@ def test_admin_delete_tag(admin_client, app, make_quote):
     with app.app_context():
         make_quote(tags=['ToDelete'])
         from models import Tag
+
         tag = Tag.query.filter_by(name='ToDelete').first()
         tag_id = tag.id
 
@@ -210,8 +245,9 @@ def test_admin_delete_tag(admin_client, app, make_quote):
     assert response.status_code == 200
 
     with app.app_context():
-        from models import Tag
         from extensions import db
+        from models import Tag
+
         assert db.session.get(Tag, tag_id) is None
 
 
@@ -222,27 +258,37 @@ def test_admin_settings_get(admin_client, app):
 
 def test_admin_settings_general(admin_client, app):
     with app.app_context():
-        response = admin_client.post('/admin/settings', data={
-            'tab': 'general',
-            'quotes_per_page': '30',
-            'site_name': 'My Quotes',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/settings',
+            data={
+                'tab': 'general',
+                'quotes_per_page': '30',
+                'site_name': 'My Quotes',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
         from helpers import get_setting
+
         assert get_setting('quotes_per_page') == '30'
         assert get_setting('site_name') == 'My Quotes'
 
 
 def test_admin_settings_theme(admin_client, app):
     with app.app_context():
-        response = admin_client.post('/admin/settings', data={
-            'tab': 'themes',
-            'theme_name': 'ozean',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/settings',
+            data={
+                'tab': 'themes',
+                'theme_name': 'ozean',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
         from helpers import get_setting
+
         assert get_setting('theme_name') == 'ozean'
 
 
@@ -254,6 +300,7 @@ def test_admin_backup_page(admin_client, app):
 def test_admin_backup_create(admin_client, app, tmp_path):
     """Creating a backup should fail gracefully in test (no mysqldump)."""
     import backup_service
+
     original = backup_service.BACKUP_DIR
     backup_service.BACKUP_DIR = str(tmp_path)
     try:
@@ -268,7 +315,9 @@ def test_backup_and_restore_pass_password_via_env(app, tmp_path, monkeypatch):
     """The DB password goes to mysqldump/mariadb as MYSQL_PWD, never on the command line."""
     import subprocess
     import tarfile
+
     import backup_service
+
     calls = []
 
     def fake_run(cmd, **kw):
@@ -320,19 +369,25 @@ def test_admin_requires_login(client, app):
     for path in ['/admin/', '/admin/quotes', '/admin/tags', '/admin/settings', '/admin/backup']:
         response = client.get(path)
         assert response.status_code == 302, f'{path} should redirect'
+        assert '/login' in response.headers.get('Location', '')
 
 
 @pytest.mark.parametrize('posted, saved', [('abc', '20'), ('500', '100'), ('1', '5')])
 def test_admin_settings_invalid_quotes_per_page(admin_client, app, posted, saved):
     """Non-numbers fall back to 20, numbers outside 5-100 are clamped."""
     with app.app_context():
-        response = admin_client.post('/admin/settings', data={
-            'tab': 'general',
-            'quotes_per_page': posted,
-            'site_name': 'Test',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/settings',
+            data={
+                'tab': 'general',
+                'quotes_per_page': posted,
+                'site_name': 'Test',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
         from helpers import get_setting
+
         assert get_setting('quotes_per_page') == saved
 
 
@@ -343,15 +398,20 @@ def test_admin_edit_quote_empty_text_keeps_original(admin_client, app, make_quot
         quote_id = q.id
 
     with app.app_context():
-        response = admin_client.post(f'/admin/quotes/{quote_id}/edit', data={
-            'text': '',
-            'author': 'NewAuthor',
-            'tags': '',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            f'/admin/quotes/{quote_id}/edit',
+            data={
+                'text': '',
+                'author': 'NewAuthor',
+                'tags': '',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
-        from models import Quote
         from extensions import db
+        from models import Quote
+
         updated = db.session.get(Quote, quote_id)
         assert updated.text == 'Original text'
 
@@ -363,11 +423,15 @@ def test_admin_edit_quote_invalidates_cache(admin_client, app, make_quote):
         quote_id = q.id
 
     with app.app_context():
-        response = admin_client.post(f'/admin/quotes/{quote_id}/edit', data={
-            'text': 'Updated cache test',
-            'author': 'NewAuthor',
-            'tags': '',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            f'/admin/quotes/{quote_id}/edit',
+            data={
+                'text': 'Updated cache test',
+                'author': 'NewAuthor',
+                'tags': '',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
 
@@ -382,13 +446,18 @@ def test_admin_search_with_special_chars(admin_client, app, make_quote):
 def test_admin_settings_atomic(admin_client, app):
     """Settings save should be atomic — both values saved together."""
     with app.app_context():
-        response = admin_client.post('/admin/settings', data={
-            'tab': 'general',
-            'quotes_per_page': '50',
-            'site_name': 'Atomic Test',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/settings',
+            data={
+                'tab': 'general',
+                'quotes_per_page': '50',
+                'site_name': 'Atomic Test',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
         from helpers import get_setting
+
         assert get_setting('quotes_per_page') == '50'
         assert get_setting('site_name') == 'Atomic Test'
 
@@ -415,9 +484,13 @@ def test_login_open_redirect_blocked(client, app, make_admin):
     """Login should not redirect to external URLs via ?next=."""
     with app.app_context():
         make_admin(username='admin', password='secret')
-    response = client.post('/login?next=https://evil.com/', data={
-        'username': 'admin', 'password': 'secret',
-    })
+    response = client.post(
+        '/login?next=https://evil.com/',
+        data={
+            'username': 'admin',
+            'password': 'secret',
+        },
+    )
     assert response.status_code == 302
     location = response.headers['Location']
     assert 'evil.com' not in location
@@ -426,8 +499,9 @@ def test_login_open_redirect_blocked(client, app, make_admin):
 def test_admin_edit_quote_null_author_no_none(admin_client, app, make_quote):
     """Edit form should show empty string for None author, not literal 'None'."""
     with app.app_context():
-        from models import Quote
         from extensions import db
+        from models import Quote
+
         q = Quote(text='Null author', author=None)
         db.session.add(q)
         db.session.commit()
@@ -440,14 +514,19 @@ def test_admin_edit_quote_null_author_no_none(admin_client, app, make_quote):
 def test_admin_theme_override_validates_color(admin_client, app):
     """Theme color overrides should reject non-hex values."""
     with app.app_context():
-        response = admin_client.post('/admin/settings', data={
-            'tab': 'themes',
-            'theme_name': 'klassisch',
-            'color_navbar': 'red; } body { background: url(evil) }',
-        }, follow_redirects=True)
+        response = admin_client.post(
+            '/admin/settings',
+            data={
+                'tab': 'themes',
+                'theme_name': 'klassisch',
+                'color_navbar': 'red; } body { background: url(evil) }',
+            },
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
         from helpers import get_setting
+
         # Malicious value should NOT be saved
         assert get_setting('theme_klassisch_color_navbar') is None
 
@@ -455,15 +534,28 @@ def test_admin_theme_override_validates_color(admin_client, app):
 def test_admin_theme_override_validates_effects(admin_client):
     """Effect overrides of the current theme must be whole numbers."""
     from helpers import get_setting, set_setting
+
     set_setting('theme_name', 'hacker')
-    admin_client.post('/admin/settings', data={
-        'tab': 'themes', 'theme_name': 'hacker', 'typing_speed': 'fast', 'particle_count': '7.5',
-    })
+    admin_client.post(
+        '/admin/settings',
+        data={
+            'tab': 'themes',
+            'theme_name': 'hacker',
+            'typing_speed': 'fast',
+            'particle_count': '7.5',
+        },
+    )
     assert get_setting('theme_hacker_typing_speed') is None
     assert get_setting('theme_hacker_particle_count') is None
-    admin_client.post('/admin/settings', data={
-        'tab': 'themes', 'theme_name': 'hacker', 'typing_speed': '5', 'particle_count': '7',
-    })
+    admin_client.post(
+        '/admin/settings',
+        data={
+            'tab': 'themes',
+            'theme_name': 'hacker',
+            'typing_speed': '5',
+            'particle_count': '7',
+        },
+    )
     assert get_setting('theme_hacker_typing_speed') == '5'
     assert get_setting('theme_hacker_particle_count') == '7'
 
@@ -472,9 +564,11 @@ def test_german_ui_has_no_hard_coded_english(admin_client, app, make_quote, monk
     """German is the default language: these labels used to be hard-coded English or borrowed
     the wrong key (authors' "all" button said "Durchsuchen", the tags filter "Zitate suchen...")."""
     import re
+
     import backup_service
     from extensions import db
     from models import BackupLog
+
     monkeypatch.setattr(backup_service, 'BACKUP_DIR', str(tmp_path))
     (tmp_path / 'zitate_backup_2026_06_15_08-00-00.tar.gz').write_bytes(b'x')
     db.session.add(BackupLog(level='INFO', message='test'))
@@ -503,18 +597,19 @@ RESTORE_URL = '/admin/backup/zitate_backup_2026_06_15_08-00-00.tar.gz/restore'
 
 def test_restore_failure_is_translated(admin_client, monkeypatch):
     import routes.admin
+
     monkeypatch.setattr(routes.admin, 'restore_backup', lambda f: (False, 'Database restore failed'))
     html = admin_client.post(RESTORE_URL, follow_redirects=True).get_data(as_text=True)
     assert 'Wiederherstellung fehlgeschlagen: Database restore failed' in html
 
 
 @pytest.mark.parametrize('tags, flag', [(['English'], '1'), (None, '')])
-def test_restore_reruns_tag_migration_only_for_pre_tag_backups(admin_client, make_quote, monkeypatch,
-                                                               tags, flag):
+def test_restore_reruns_tag_migration_only_for_pre_tag_backups(admin_client, make_quote, monkeypatch, tags, flag):
     """A restored backup with tags keeps its untagged quotes untagged (e.g. an English quote added
     without tags); only a backup without any tags gets the migration again."""
     import routes.admin
     from helpers import get_setting, set_setting
+
     monkeypatch.setattr(routes.admin, 'restore_backup', lambda f: (True, 'ok'))
     set_setting('tags_migrated', '1')
     set_setting('cleanup_version', '5')

@@ -193,6 +193,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 
 # Tests ausführen
 python3 -m pytest
+ruff check . && ruff format --check .   # Lint und Format
 
 # Lokal starten (SQLite unter instance/dev.db, Admin admin/admin)
 cd app
@@ -444,6 +445,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 
 # Run tests
 python3 -m pytest
+ruff check . && ruff format --check .   # lint and format
 
 # Run locally (SQLite in instance/dev.db, admin admin/admin)
 cd app

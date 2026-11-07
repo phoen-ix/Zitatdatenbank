@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import os
-import secrets
 import time
 from urllib.parse import urlparse
 
-from flask import g, request, session
+from flask import request, session
 
+from config import ALL_THEME_KEYS, COLOR_KEYS, DEFAULT_THEME, THEMES
 from extensions import db
 from models import Setting
-from config import THEMES, DEFAULT_THEME, COLOR_KEYS, EFFECT_KEYS, ALL_THEME_KEYS
 
 # Simple in-memory cache for expensive stats queries
 _stats_cache: dict[str, tuple[float, int]] = {}  # key -> (expires_at, value)
@@ -35,6 +33,7 @@ def get_lang() -> str:
 
 def _(key: str) -> str:
     from translations import TRANSLATIONS
+
     entry = TRANSLATIONS.get(key, {})
     lang = get_lang()
     return entry.get(lang, entry.get('de', key))
@@ -42,6 +41,7 @@ def _(key: str) -> str:
 
 def get_active_theme() -> dict[str, str]:
     """Return the active theme dict, cached to avoid 14+ DB queries per request."""
+
     def _load_theme():
         theme_name = get_setting('theme_name', DEFAULT_THEME)
         if theme_name == 'custom':
@@ -80,7 +80,7 @@ def get_theme_overrides() -> dict[str, dict[str, str]]:
         rest = row.key[6:]  # remove 'theme_'
         for tname in THEMES:
             if rest.startswith(tname + '_'):
-                field = rest[len(tname) + 1:]
+                field = rest[len(tname) + 1 :]
                 if field in ALL_THEME_KEYS:
                     overrides.setdefault(tname, {})[field] = row.value
                 break
@@ -135,9 +135,11 @@ class FastPagination:
         if self.pages is not None:
             last = 0
             for num in range(1, self.pages + 1):
-                if (num <= left_edge or
-                    (self.page - left_current <= num <= self.page + right_current) or
-                    num > self.pages - right_edge):
+                if (
+                    num <= left_edge
+                    or (self.page - left_current <= num <= self.page + right_current)
+                    or num > self.pages - right_edge
+                ):
                     if last + 1 != num:
                         yield None
                     yield num
@@ -178,8 +180,7 @@ def local_path(url: str | None) -> str | None:
     '///x' as host x, so those are refused rather than left to urlparse alone.
     """
     url = (url or '').replace('\\', '/')
-    if (urlparse(url).netloc or not url.startswith('/') or url.startswith('//')
-            or any(c < ' ' for c in url)):
+    if urlparse(url).netloc or not url.startswith('/') or url.startswith('//') or any(c < ' ' for c in url):
         return None
     return url
 

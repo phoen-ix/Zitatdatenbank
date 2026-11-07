@@ -10,6 +10,7 @@ os.environ['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
 
 import pytest
+
 from app import app as _app
 from extensions import db as _db
 
@@ -18,12 +19,15 @@ from extensions import db as _db
 def app():
     """Create application for testing."""
     from extensions import limiter
-    _app.config.update({
-        'TESTING': True,
-        'WTF_CSRF_ENABLED': False,
-        'RATELIMIT_ENABLED': False,
-        'SQLALCHEMY_DATABASE_URI': 'sqlite://',
-    })
+
+    _app.config.update(
+        {
+            'TESTING': True,
+            'WTF_CSRF_ENABLED': False,
+            'RATELIMIT_ENABLED': False,
+            'SQLALCHEMY_DATABASE_URI': 'sqlite://',
+        }
+    )
     limiter.enabled = False
     with _app.app_context():
         _db.create_all()
@@ -34,6 +38,7 @@ def app():
 def clean_db(app):
     """Roll back all changes after each test."""
     from helpers import invalidate_stats_cache
+
     with app.app_context():
         _db.create_all()
         invalidate_stats_cache()
@@ -58,11 +63,11 @@ def make_quote(app):
 
     def _make(text=None, author=None, category=None, tags=None):
         from models import Quote, Tag
+
         _counter[0] += 1
         if text is None:
             text = f'Test quote number {_counter[0]}'
-        quote = Quote(text=text, author=author or f'Author{_counter[0]}',
-                      category=category)
+        quote = Quote(text=text, author=author or f'Author{_counter[0]}', category=category)
         _db.session.add(quote)
         _db.session.flush()
         if tags:
@@ -82,9 +87,12 @@ def make_quote(app):
 @pytest.fixture
 def make_admin(app):
     """Factory fixture to create admin users."""
+
     def _make(username='admin', password='testpass'):
-        from models import AdminUser
         from werkzeug.security import generate_password_hash
+
+        from models import AdminUser
+
         admin = AdminUser(
             username=username,
             password_hash=generate_password_hash(password),

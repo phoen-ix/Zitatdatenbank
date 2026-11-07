@@ -14,6 +14,7 @@ from models import Quote
 
 def _tag_names(quote_id):
     from extensions import db
+
     return sorted(t.name for t in db.session.get(Quote, quote_id).tags)
 
 
@@ -36,6 +37,7 @@ def test_tag_migration_keeps_existing_tags(make_quote):
 
 def test_tag_migration_with_only_tagged_quotes_sets_flag(make_quote):
     from models import Tag
+
     english = make_quote(tags=['English'])
     _auto_migrate_tags()
     assert _tag_names(english.id) == ['English']
@@ -47,10 +49,13 @@ APP_DIR = Path(__file__).resolve().parent.parent / 'app'
 
 
 def _run_cli(tmp_path, *cmd, **env_extra):
-    env = {k: v for k, v in os.environ.items()
-           if k not in ('FLASK_TESTING', 'ADMIN_PASSWORD', 'FLASK_RUN_FROM_CLI')}
-    env.update(FLASK_APP=str(APP_DIR / 'app.py'), SECRET_KEY='cli-test-key',
-               SQLALCHEMY_DATABASE_URI=f'sqlite:///{tmp_path}/cli.db', **env_extra)
+    env = {k: v for k, v in os.environ.items() if k not in ('FLASK_TESTING', 'ADMIN_PASSWORD', 'FLASK_RUN_FROM_CLI')}
+    env.update(
+        FLASK_APP=str(APP_DIR / 'app.py'),
+        SECRET_KEY='cli-test-key',
+        SQLALCHEMY_DATABASE_URI=f'sqlite:///{tmp_path}/cli.db',
+        **env_extra,
+    )
     return subprocess.run(cmd, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120)
 
 
@@ -68,8 +73,18 @@ def test_cli_commands_skip_startup_sequence(tmp_path):
     relative to the working directory) belongs to the server."""
     (tmp_path / 'data').mkdir()
     (tmp_path / 'data' / 'quotes.csv').write_text('quote,author,category\n"Be yourself.",Oscar Wilde,life\n')
-    r = _run_cli(tmp_path, sys.executable, '-m', 'flask', 'create-admin', '--username', 'cli',
-                 '--password', 'pw', PYTHONPATH=str(APP_DIR))
+    r = _run_cli(
+        tmp_path,
+        sys.executable,
+        '-m',
+        'flask',
+        'create-admin',
+        '--username',
+        'cli',
+        '--password',
+        'pw',
+        PYTHONPATH=str(APP_DIR),
+    )
     assert r.returncode == 0, r.stderr
     with sqlite3.connect(tmp_path / 'cli.db') as con:
         assert con.execute('SELECT COUNT(*) FROM quote').fetchone()[0] == 0
@@ -80,12 +95,15 @@ def test_auto_import_loads_both_sources_into_an_empty_table(tmp_path, monkeypatc
     """The server's first start imports data/zitate.sql (German, untagged) and data/quotes.csv
     (English, tagged); a later start finds quotes and imports nothing."""
     from app import _auto_import
+
     (tmp_path / 'data').mkdir()
     (tmp_path / 'data' / 'zitate.sql').write_text(
         "INSERT INTO `zitate` (`id`, `zitat`, `autor_herkunft_thema`) VALUES (1, 'Erstes Zitat', 'Goethe');\n",
-        encoding='utf-8')
+        encoding='utf-8',
+    )
     (tmp_path / 'data' / 'quotes.csv').write_text(
-        'quote,author,category\n"Be yourself.",Oscar Wilde,life\n', encoding='utf-8')
+        'quote,author,category\n"Be yourself.",Oscar Wilde,life\n', encoding='utf-8'
+    )
     monkeypatch.chdir(tmp_path)
     _auto_import()
     assert Quote.query.count() == 2
@@ -98,11 +116,15 @@ def test_auto_import_loads_both_sources_into_an_empty_table(tmp_path, monkeypatc
 
 def test_cli_import_quotes_and_create_admin(app, tmp_path):
     from werkzeug.security import check_password_hash
+
     from models import AdminUser
+
     runner = app.test_cli_runner()
     sql = tmp_path / 'zitate.sql'
-    sql.write_text("INSERT INTO `zitate` (`id`, `zitat`, `autor_herkunft_thema`) VALUES (1, 'Eins', 'A'), "
-                   "(2, 'Zwei', 'B');\n", encoding='utf-8')
+    sql.write_text(
+        "INSERT INTO `zitate` (`id`, `zitat`, `autor_herkunft_thema`) VALUES (1, 'Eins', 'A'), (2, 'Zwei', 'B');\n",
+        encoding='utf-8',
+    )
     assert 'Imported 2 quotes.' in runner.invoke(args=['import-quotes', str(sql)]).output
     assert 'File not found' in runner.invoke(args=['import-quotes', str(tmp_path / 'missing.sql')]).output
     assert Quote.query.count() == 2
@@ -119,12 +141,12 @@ ENTRYPOINT = Path(__file__).resolve().parent.parent / 'entrypoint.sh'
 def _run_entrypoint(data_dir):
     """entrypoint.sh with /data pointed at data_dir and without gosu (the image's user switch)."""
     script = re.sub(r'(?<!\w)/data\b', str(data_dir), ENTRYPOINT.read_text()).replace('exec gosu appuser', 'exec')
-    return subprocess.run(['sh', '-c', script, 'entrypoint.sh', 'true'], capture_output=True, text=True,
-                          timeout=60)
+    return subprocess.run(['sh', '-c', script, 'entrypoint.sh', 'true'], capture_output=True, text=True, timeout=60)
 
 
 def test_entrypoint_extracts_the_data_archive(tmp_path):
     import tarfile
+
     src = tmp_path / 'src'
     src.mkdir()
     (src / 'zitate.sql').write_text('-- dump\n')
@@ -156,9 +178,21 @@ def test_cli_builds_a_fresh_database_from_the_migrations(tmp_path):
     from alembic.autogenerate import compare_metadata
     from alembic.migration import MigrationContext
     from sqlalchemy import create_engine
+
     from extensions import db
-    r = _run_cli(tmp_path, sys.executable, '-m', 'flask', 'create-admin', '--username', 'cli',
-                 '--password', 'pw', PYTHONPATH=str(APP_DIR))
+
+    r = _run_cli(
+        tmp_path,
+        sys.executable,
+        '-m',
+        'flask',
+        'create-admin',
+        '--username',
+        'cli',
+        '--password',
+        'pw',
+        PYTHONPATH=str(APP_DIR),
+    )
     assert r.returncode == 0, r.stderr
     assert len(_alembic_version(tmp_path / 'cli.db')) == 1
     with create_engine(f'sqlite:///{tmp_path}/cli.db').connect() as conn:
@@ -168,13 +202,25 @@ def test_cli_builds_a_fresh_database_from_the_migrations(tmp_path):
 def test_cli_stamps_a_database_from_before_the_migrations(tmp_path):
     """An install whose tables came from create_all keeps its data and is stamped, not re-created."""
     from sqlalchemy import create_engine
+
     from extensions import db
+
     engine = create_engine(f'sqlite:///{tmp_path}/cli.db')
     db.metadata.create_all(engine)
     with engine.begin() as conn:
         conn.execute(db.text("INSERT INTO quote (text) VALUES ('kept')"))
-    r = _run_cli(tmp_path, sys.executable, '-m', 'flask', 'create-admin', '--username', 'cli',
-                 '--password', 'pw', PYTHONPATH=str(APP_DIR))
+    r = _run_cli(
+        tmp_path,
+        sys.executable,
+        '-m',
+        'flask',
+        'create-admin',
+        '--username',
+        'cli',
+        '--password',
+        'pw',
+        PYTHONPATH=str(APP_DIR),
+    )
     assert r.returncode == 0, r.stderr
     assert len(_alembic_version(tmp_path / 'cli.db')) == 1
     with sqlite3.connect(tmp_path / 'cli.db') as con:
@@ -185,16 +231,18 @@ def test_session_cookie_secure_defaults_on_and_can_be_switched_off(tmp_path):
     code = "import app; print(app.app.config['SESSION_COOKIE_SECURE'])"
     for value, expected in ((None, 'True'), ('false', 'False'), ('true', 'True')):
         extra = {'SESSION_COOKIE_SECURE': value} if value else {}
-        r = _run_cli(tmp_path, sys.executable, '-c', code, PYTHONPATH=str(APP_DIR),
-                     FLASK_RUN_FROM_CLI='true', **extra)
+        r = _run_cli(tmp_path, sys.executable, '-c', code, PYTHONPATH=str(APP_DIR), FLASK_RUN_FROM_CLI='true', **extra)
         assert r.stdout.strip() == expected, r.stderr
 
 
 def test_behind_proxy_takes_the_client_address_from_x_forwarded_for(tmp_path):
-    code = ("import app; c = app.app.test_client(); from flask import request\n"
-            "app.app.add_url_rule('/ip', 'ip', lambda: request.remote_addr)\n"
-            "print(c.get('/ip', headers={'X-Forwarded-For': '203.0.113.9'}).get_data(as_text=True))")
+    code = (
+        'import app; c = app.app.test_client(); from flask import request\n'
+        "app.app.add_url_rule('/ip', 'ip', lambda: request.remote_addr)\n"
+        "print(c.get('/ip', headers={'X-Forwarded-For': '203.0.113.9'}).get_data(as_text=True))"
+    )
     for value, expected in (('0', '127.0.0.1'), ('1', '203.0.113.9')):
-        r = _run_cli(tmp_path, sys.executable, '-c', code, PYTHONPATH=str(APP_DIR),
-                     FLASK_RUN_FROM_CLI='true', BEHIND_PROXY=value)
+        r = _run_cli(
+            tmp_path, sys.executable, '-c', code, PYTHONPATH=str(APP_DIR), FLASK_RUN_FROM_CLI='true', BEHIND_PROXY=value
+        )
         assert r.stdout.strip() == expected, r.stderr

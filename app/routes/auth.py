@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_user, logout_user, current_user
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from models import AdminUser
-from helpers import _, local_path
 from extensions import limiter
+from helpers import _, local_path
+from models import AdminUser
 
 auth_bp = Blueprint('auth', __name__)
 

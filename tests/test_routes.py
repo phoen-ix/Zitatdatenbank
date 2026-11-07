@@ -89,7 +89,9 @@ def test_tags_page_orders_equal_counts_by_name(client, app, make_quote):
         make_quote(tags=['Liebe'])
         make_quote(tags=['Liebe'])
     html = client.get('/browse/tags').get_data(as_text=True)
-    assert [html.index(t) for t in ['Liebe', 'Angst', 'Natur', 'Zeit']] == sorted(html.index(t) for t in ['Liebe', 'Angst', 'Natur', 'Zeit'])
+    assert [html.index(t) for t in ['Liebe', 'Angst', 'Natur', 'Zeit']] == sorted(
+        html.index(t) for t in ['Liebe', 'Angst', 'Natur', 'Zeit']
+    )
 
 
 def test_search_empty(client, app):
@@ -168,8 +170,9 @@ def test_api_quotes_filter_author(client, app, make_quote):
 
 
 def test_api_quotes_filter_tag(client, app, make_quote):
-    from models import Tag
     from extensions import db as _db
+    from models import Tag
+
     with app.app_context():
         tag = Tag(name='Wisdom')
         _db.session.add(tag)
@@ -410,8 +413,9 @@ def test_nlbr_filter_escapes_xss(client, app, make_quote):
 def test_quote_detail_null_author(client, app, make_quote):
     """Quote detail should handle None author without crashing."""
     with app.app_context():
-        from models import Quote
         from extensions import db as _db
+        from models import Quote
+
         q = Quote(text='No author quote', author=None)
         _db.session.add(q)
         _db.session.commit()
@@ -424,9 +428,13 @@ def test_login_javascript_redirect_blocked(client, app, make_admin):
     """Login should not redirect to javascript: URLs via ?next=."""
     with app.app_context():
         make_admin(username='admin', password='secret')
-    response = client.post('/login?next=javascript:alert(1)', data={
-        'username': 'admin', 'password': 'secret',
-    })
+    response = client.post(
+        '/login?next=javascript:alert(1)',
+        data={
+            'username': 'admin',
+            'password': 'secret',
+        },
+    )
     assert response.status_code == 302
     location = response.headers['Location']
     assert 'javascript' not in location
@@ -436,15 +444,21 @@ def test_login_valid_next_redirect(client, app, make_admin):
     """Login should redirect to valid relative next URL."""
     with app.app_context():
         make_admin(username='admin', password='secret')
-    response = client.post('/login?next=/admin/quotes', data={
-        'username': 'admin', 'password': 'secret',
-    })
+    response = client.post(
+        '/login?next=/admin/quotes',
+        data={
+            'username': 'admin',
+            'password': 'secret',
+        },
+    )
     assert response.status_code == 302
     assert '/admin/quotes' in response.headers['Location']
 
 
-@pytest.mark.parametrize('next_page', ['/\\evil.example/', '///evil.example/', '/%09/evil.example/',
-                                       '//evil.example/', 'https://evil.example/'])
+@pytest.mark.parametrize(
+    'next_page',
+    ['/\\evil.example/', '///evil.example/', '/%09/evil.example/', '//evil.example/', 'https://evil.example/'],
+)
 def test_login_next_stays_on_this_site(client, app, make_admin, next_page):
     """Browsers take '/\\x', '///x' and '/<tab>/x' as host x; urlparse sees a path."""
     with app.app_context():
@@ -454,12 +468,15 @@ def test_login_next_stays_on_this_site(client, app, make_admin, next_page):
     assert response.headers['Location'] == '/admin/'
 
 
-@pytest.mark.parametrize('referrer, location', [
-    ('https://evil.example\\@localhost/', '/'),
-    ('/\\evil.example/', '/'),
-    ('http://localhost/quotes?page=2', 'http://localhost/quotes?page=2'),
-    ('/quotes', '/quotes'),
-])
+@pytest.mark.parametrize(
+    'referrer, location',
+    [
+        ('https://evil.example\\@localhost/', '/'),
+        ('/\\evil.example/', '/'),
+        ('http://localhost/quotes?page=2', 'http://localhost/quotes?page=2'),
+        ('/quotes', '/quotes'),
+    ],
+)
 def test_set_lang_returns_only_to_this_site(client, app, referrer, location):
     response = client.get('/set-lang/en', headers={'Referer': referrer})
     assert response.headers['Location'] == location
@@ -470,16 +487,20 @@ def test_templates_have_no_inline_event_handlers():
     attributes, so they never run: wire controls up in a nonce'd script instead."""
     import re
     from pathlib import Path
+
     templates = Path(__file__).resolve().parent.parent / 'app' / 'templates'
-    offenders = [f'{p.relative_to(templates)}: {m.group().strip()}'
-                 for p in sorted(templates.rglob('*.html'))
-                 for m in re.finditer(r'\son[a-z]+\s*=', p.read_text())]
+    offenders = [
+        f'{p.relative_to(templates)}: {m.group().strip()}'
+        for p in sorted(templates.rglob('*.html'))
+        for m in re.finditer(r'\son[a-z]+\s*=', p.read_text())
+    ]
     assert offenders == []
 
 
 def test_dark_theme_colors_card_text_and_placeholders(client, app):
     """Dunkel: card text and placeholders kept Bootstrap's #212529 on a #313244 background."""
-    from helpers import set_setting, invalidate_stats_cache
+    from helpers import invalidate_stats_cache, set_setting
+
     set_setting('theme_name', 'dunkel')
     invalidate_stats_cache()
     html = client.get('/').get_data(as_text=True)
@@ -496,6 +517,7 @@ def test_500_page_renders_without_the_database(client, app, monkeypatch):
 
     def down():
         raise RuntimeError('database down')
+
     monkeypatch.setitem(app.config, 'PROPAGATE_EXCEPTIONS', False)
     monkeypatch.setattr(sys.modules['app'], 'get_active_theme', down)
     response = client.get('/credits')

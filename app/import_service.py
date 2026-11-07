@@ -7,8 +7,14 @@ logger = logging.getLogger(__name__)
 
 # Category values that indicate a source type (proverbs, tongue twisters, ad slogans, etc.)
 SOURCE_KEYWORDS = (
-    'Sprichw', 'Zungenbrecher', 'Werbespr', 'Bauernregel',
-    'Kinderreim', 'Abzählreim', 'Volksmund', 'Redewendung',
+    'Sprichw',
+    'Zungenbrecher',
+    'Werbespr',
+    'Bauernregel',
+    'Kinderreim',
+    'Abzählreim',
+    'Volksmund',
+    'Redewendung',
 )
 
 
@@ -47,7 +53,7 @@ def parse_sql_inserts(sql_text: str) -> list[tuple[int, str, str]]:
             while after_paren < length and sql_text[after_paren].isdigit():
                 after_paren += 1
             # Must be followed by comma to be a data row
-            rest = sql_text[after_paren:after_paren + 5].lstrip()
+            rest = sql_text[after_paren : after_paren + 5].lstrip()
             if not rest.startswith(','):
                 i = idx + 1
                 continue
@@ -79,7 +85,7 @@ def parse_sql_inserts(sql_text: str) -> list[tuple[int, str, str]]:
             i = end_pos2
 
             # Check if this INSERT statement ended (semicolon after closing paren)
-            tail = sql_text[end_pos2:end_pos2 + 10].lstrip()
+            tail = sql_text[end_pos2 : end_pos2 + 10].lstrip()
             if tail.startswith(';'):
                 break
 
@@ -202,12 +208,13 @@ def import_quotes_from_csv(csv_path: str, default_tag_names: list[str] | None = 
     Returns count of imported quotes.
     """
     import csv
+
     from extensions import db
     from models import Quote, Tag
 
     # Get or create default tags
     default_tags = []
-    for name in (default_tag_names or []):
+    for name in default_tag_names or []:
         tag = Tag.query.filter_by(name=name).first()
         if not tag:
             tag = Tag(name=name)

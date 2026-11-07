@@ -6,7 +6,6 @@ from flask_login import UserMixin
 
 from extensions import db
 
-
 quote_tags = db.Table(
     'quote_tags',
     db.Column('quote_id', db.Integer, db.ForeignKey('quote.id', ondelete='CASCADE'), primary_key=True),
@@ -22,8 +21,11 @@ class Quote(db.Model):
     author = db.Column(db.String(500), nullable=True, index=True)
     category = db.Column(db.String(500), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None),
-                           onupdate=lambda: datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
+    )
 
     tags = db.relationship('Tag', secondary=quote_tags, back_populates='quotes', lazy='select')
 

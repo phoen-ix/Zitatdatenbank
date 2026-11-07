@@ -8,9 +8,9 @@ import tarfile
 import tempfile
 from datetime import datetime
 
+from config import BACKUP_DIR
 from extensions import db
 from models import BackupLog
-from config import BACKUP_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +50,28 @@ def run_backup() -> tuple[bool, str]:
             dump_path = os.path.join(tmp, 'dump.sql')
             with open(dump_path, 'wb') as dump_file:
                 result = subprocess.run(
-                    ['mysqldump', '-h', _db_host, '-P', _db_port, f'-u{_db_user}',
-                     '--add-drop-table',
-                     '--ignore-table', f'{_db_name}.setting',
-                     '--ignore-table', f'{_db_name}.admin_user',
-                     '--ignore-table', f'{_db_name}.backup_log',
-                     '--ignore-table', f'{_db_name}.alembic_version',
-                     _db_name],
-                    stdout=dump_file, stderr=subprocess.PIPE, timeout=300, env=_client_env(),
+                    [
+                        'mysqldump',
+                        '-h',
+                        _db_host,
+                        '-P',
+                        _db_port,
+                        f'-u{_db_user}',
+                        '--add-drop-table',
+                        '--ignore-table',
+                        f'{_db_name}.setting',
+                        '--ignore-table',
+                        f'{_db_name}.admin_user',
+                        '--ignore-table',
+                        f'{_db_name}.backup_log',
+                        '--ignore-table',
+                        f'{_db_name}.alembic_version',
+                        _db_name,
+                    ],
+                    stdout=dump_file,
+                    stderr=subprocess.PIPE,
+                    timeout=300,
+                    env=_client_env(),
                 )
             if result.returncode != 0:
                 err = result.stderr.decode(errors='replace')[:300]
@@ -105,7 +119,9 @@ def restore_backup(filename: str) -> tuple[bool, str]:
                 result = subprocess.run(
                     ['mariadb', '-h', _db_host, '-P', _db_port, f'-u{_db_user}', _db_name],
                     stdin=dump_file,
-                    stderr=subprocess.PIPE, timeout=300, env=_client_env(),
+                    stderr=subprocess.PIPE,
+                    timeout=300,
+                    env=_client_env(),
                 )
             if result.returncode != 0:
                 _backup_log('ERROR', 'Restore failed')
@@ -128,11 +144,13 @@ def list_backups() -> list[dict[str, str | int | datetime]]:
             if re.match(r'^zitate_backup_[\d_-]+\.tar\.gz$', f):
                 fpath = os.path.join(BACKUP_DIR, f)
                 stat = os.stat(fpath)
-                backups.append({
-                    'filename': f,
-                    'size': stat.st_size,
-                    'modified': datetime.fromtimestamp(stat.st_mtime),
-                })
+                backups.append(
+                    {
+                        'filename': f,
+                        'size': stat.st_size,
+                        'modified': datetime.fromtimestamp(stat.st_mtime),
+                    }
+                )
     return backups
 
 

@@ -8,6 +8,7 @@ self-hosted, gunicorn in Docker. README.md (German first, then English) is the u
 ## Commands
 ```bash
 python3 -m pytest                       # tests (conftest sets FLASK_TESTING, SQLite in-memory)
+ruff check . && ruff format --check .  # lint + format (pyproject.toml; requirements-dev.txt)
 # local dev server, run in app/ (SQLite in instance/dev.db, admin admin/admin)
 export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
 flask create-admin --username admin --password admin   # the app's CLI commands migrate the schema

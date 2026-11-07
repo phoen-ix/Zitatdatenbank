@@ -3,13 +3,22 @@ from __future__ import annotations
 BACKUP_DIR: str = '/backups'
 
 COLOR_KEYS: list[str] = [
-    'color_navbar', 'color_bg', 'color_text', 'color_accent',
-    'color_card_bg', 'color_footer_bg', 'color_link', 'color_muted',
-    'color_border', 'color_card_header_bg', 'color_input_bg',
+    'color_navbar',
+    'color_bg',
+    'color_text',
+    'color_accent',
+    'color_card_bg',
+    'color_footer_bg',
+    'color_link',
+    'color_muted',
+    'color_border',
+    'color_card_header_bg',
+    'color_input_bg',
 ]
 
 EFFECT_KEYS: list[str] = [
-    'typing_speed', 'particle_count',
+    'typing_speed',
+    'particle_count',
 ]
 
 ALL_THEME_KEYS: list[str] = COLOR_KEYS + EFFECT_KEYS
@@ -106,7 +115,6 @@ THEMES: dict[str, dict[str, str]] = {
         'typing_speed': '0',
         'particle_count': '0',
     },
-
     # --- Animated themes ---
     'hacker': {
         'label': 'Hacker Terminal',

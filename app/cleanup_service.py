@@ -144,43 +144,120 @@ AUS_COUNTRY_MAP = {
 
 # Known legitimate single-name authors (historical figures, artists, etc.)
 KNOWN_SINGLE_NAMES = {
-    'Äsop', 'Ovid', 'Homer', 'Horaz', 'Lenin', 'Plato', 'Saadi',
-    'Solon', 'Sunzi', 'Hafes', 'Falco', 'Sting', 'Smudo', 'Jesus',
-    'Lukan', 'Galen', 'Wols', 'Thot', 'Curse', 'Torch', 'Alain',
-    'Bibel', 'Koran',
+    'Äsop',
+    'Ovid',
+    'Homer',
+    'Horaz',
+    'Lenin',
+    'Plato',
+    'Saadi',
+    'Solon',
+    'Sunzi',
+    'Hafes',
+    'Falco',
+    'Sting',
+    'Smudo',
+    'Jesus',
+    'Lukan',
+    'Galen',
+    'Wols',
+    'Thot',
+    'Curse',
+    'Torch',
+    'Alain',
+    'Bibel',
+    'Koran',
 }
 
 # Known real names that end in patterns that look truncated but aren't.
 # Chinese/Asian names, abbreviations, etc.
 REAL_SHORT_ENDINGS = {
-    'Lü Bu We', 'Meng Zi', 'Johann Peter Uz', 'Malcolm X', 'Pius X',
-    'Franz Joseph I', 'Friedrich Wilhelm I', 'Xerxes I',
+    'Lü Bu We',
+    'Meng Zi',
+    'Johann Peter Uz',
+    'Malcolm X',
+    'Pius X',
+    'Franz Joseph I',
+    'Friedrich Wilhelm I',
+    'Xerxes I',
 }
 
 # Source/reference works: "WorkName Section" → move to category
 SOURCE_BOOKS = {
     # Bible books
-    'Apostelgeschichte', 'Brief an die Römer', 'Deuteronomium',
-    'Epheser', 'Galater', 'Genesis', 'Habakuk', 'Hebräer',
-    'Hebräerbrief', 'Hesekiel', 'Hiob', 'Hohelied Salomos',
-    'Hoheslied', 'Hosea', 'Jakobus', 'Jeremia', 'Jesaja',
-    'Jesus Sirach', 'Johannes', 'Judas', 'Kolosser',
-    'Leviticus', 'Levitikus', 'Lukas', 'Markus', 'Matthäus',
-    'Micha', 'Obadja', 'Offenbarung', 'Offbarung',
-    'Offenbarung des Johannes', 'Philipperbrief',
-    'Prediger', 'Prediger Salomo', 'Psalm', 'Psalme',
-    'Römer', 'Römerbrief', 'Sprüche', 'Sprüche Salomons',
-    'Sprüche Salomos', 'Tobit', 'Zefanja',
+    'Apostelgeschichte',
+    'Brief an die Römer',
+    'Deuteronomium',
+    'Epheser',
+    'Galater',
+    'Genesis',
+    'Habakuk',
+    'Hebräer',
+    'Hebräerbrief',
+    'Hesekiel',
+    'Hiob',
+    'Hohelied Salomos',
+    'Hoheslied',
+    'Hosea',
+    'Jakobus',
+    'Jeremia',
+    'Jesaja',
+    'Jesus Sirach',
+    'Johannes',
+    'Judas',
+    'Kolosser',
+    'Leviticus',
+    'Levitikus',
+    'Lukas',
+    'Markus',
+    'Matthäus',
+    'Micha',
+    'Obadja',
+    'Offenbarung',
+    'Offbarung',
+    'Offenbarung des Johannes',
+    'Philipperbrief',
+    'Prediger',
+    'Prediger Salomo',
+    'Psalm',
+    'Psalme',
+    'Römer',
+    'Römerbrief',
+    'Sprüche',
+    'Sprüche Salomons',
+    'Sprüche Salomos',
+    'Tobit',
+    'Zefanja',
     # Classical/literary works with section references
-    'Agricola', 'Ars poetica', 'Bescheidenheit',
-    'Blütenstaub', 'Blüthenstaub', 'Brutus',
-    'Bücher der Geschichte', 'Carmen saeculare', 'Carmina',
-    'Diodor', 'Elegiarum liber', 'Elegien Buch', 'Epistulae',
-    'Essai sur les Moeurs', 'Fragment', 'Gargantua',
-    'Gesammelte Irrtümer', 'Gorgias', 'Historien',
-    'Lohn der Wahrheit', 'Metaphysik', 'Metaphysik I',
-    'Phaidon', 'Phormio', 'Phädrus', 'Politik',
-    'Pro Roscio', 'Vita Augusti', 'Vita Tiberi',
+    'Agricola',
+    'Ars poetica',
+    'Bescheidenheit',
+    'Blütenstaub',
+    'Blüthenstaub',
+    'Brutus',
+    'Bücher der Geschichte',
+    'Carmen saeculare',
+    'Carmina',
+    'Diodor',
+    'Elegiarum liber',
+    'Elegien Buch',
+    'Epistulae',
+    'Essai sur les Moeurs',
+    'Fragment',
+    'Gargantua',
+    'Gesammelte Irrtümer',
+    'Gorgias',
+    'Historien',
+    'Lohn der Wahrheit',
+    'Metaphysik',
+    'Metaphysik I',
+    'Phaidon',
+    'Phormio',
+    'Phädrus',
+    'Politik',
+    'Pro Roscio',
+    'Vita Augusti',
+    'Vita Tiberi',
     'Vita divi Claudi',
 }
 
@@ -206,26 +283,50 @@ ENCODING_FIXES = {
 
 # Wikiquote disambiguation page descriptors
 DISAMBIGUATION_PAGE_TYPES = {
-    'Film', 'Fernsehserie', 'Dokumentarfilm',
-    'Pflanze', 'Tier', 'Gestein', 'Gesteinssediment',
-    'Farbe', 'Philosophie', 'Stadt', 'Raum',
-    'Schokoriegel', 'Leuchtmittel', 'Schwarzer',
-    'Zeitung', 'politische Gesinnung', 'Wetter',
+    'Film',
+    'Fernsehserie',
+    'Dokumentarfilm',
+    'Pflanze',
+    'Tier',
+    'Gestein',
+    'Gesteinssediment',
+    'Farbe',
+    'Philosophie',
+    'Stadt',
+    'Raum',
+    'Schokoriegel',
+    'Leuchtmittel',
+    'Schwarzer',
+    'Zeitung',
+    'politische Gesinnung',
+    'Wetter',
 }
 
 # Known multi-word film/show/work titles not starting with articles
 KNOWN_WORK_TITLES = {
-    'Babylon 5', 'Es war einmal in Amerika',
-    'Fear and Loathing in Las Vegas', 'From Dusk Till Dawn',
-    'Ghost in the Shell', 'Ghost in the Shell 2: Innocence',
-    'Jagd auf Roter Oktober', 'Jenseits von Schuld und Sühne',
-    'Leben und sterben lassen', 'Mein Leben und ich',
-    'Mein Name ist Nobody', 'My Big Fat Greek Summer',
-    'My Big Fat Greek Wedding', 'Nur noch 60 Sekunden',
-    'Per Anhalter durch die Galaxis', 'Reise ans Ende der Nacht',
-    'Serengeti darf nicht sterben', 'Spiel mir das Lied vom Tod',
-    'Stadien auf des Lebens Weg', 'Stargate SG1',
-    'Stirb an einem anderen Tag', 'Terminator 2', 'Terminator 3',
+    'Babylon 5',
+    'Es war einmal in Amerika',
+    'Fear and Loathing in Las Vegas',
+    'From Dusk Till Dawn',
+    'Ghost in the Shell',
+    'Ghost in the Shell 2: Innocence',
+    'Jagd auf Roter Oktober',
+    'Jenseits von Schuld und Sühne',
+    'Leben und sterben lassen',
+    'Mein Leben und ich',
+    'Mein Name ist Nobody',
+    'My Big Fat Greek Summer',
+    'My Big Fat Greek Wedding',
+    'Nur noch 60 Sekunden',
+    'Per Anhalter durch die Galaxis',
+    'Reise ans Ende der Nacht',
+    'Serengeti darf nicht sterben',
+    'Spiel mir das Lied vom Tod',
+    'Stadien auf des Lebens Weg',
+    'Stargate SG1',
+    'Stirb an einem anderen Tag',
+    'Terminator 2',
+    'Terminator 3',
     'Wem die Stunde schl',
 }
 
@@ -384,13 +485,34 @@ def _has_non_latin_chars(text: str) -> bool:
         except ValueError:
             return True
         # Allow Latin-based scripts and common marks
-        if any(prefix in name for prefix in (
-            'LATIN', 'SPACE', 'HYPHEN', 'DASH', 'APOSTROPHE', 'QUOTATION',
-            'COMMA', 'FULL STOP', 'COLON', 'SEMICOLON', 'COMBINING',
-            'NO-BREAK', 'MIDDLE DOT', 'MODIFIER', 'RIGHT SINGLE',
-            'LEFT SINGLE', 'RIGHT DOUBLE', 'LEFT DOUBLE', 'PRIME',
-            'INVERTED', 'CEDILLA', 'DIAERESIS', 'TILDE',
-        )):
+        if any(
+            prefix in name
+            for prefix in (
+                'LATIN',
+                'SPACE',
+                'HYPHEN',
+                'DASH',
+                'APOSTROPHE',
+                'QUOTATION',
+                'COMMA',
+                'FULL STOP',
+                'COLON',
+                'SEMICOLON',
+                'COMBINING',
+                'NO-BREAK',
+                'MIDDLE DOT',
+                'MODIFIER',
+                'RIGHT SINGLE',
+                'LEFT SINGLE',
+                'RIGHT DOUBLE',
+                'LEFT DOUBLE',
+                'PRIME',
+                'INVERTED',
+                'CEDILLA',
+                'DIAERESIS',
+                'TILDE',
+            )
+        ):
             continue
         return True
     return False
@@ -405,11 +527,37 @@ def _is_sentence_like(text: str) -> bool:
     if text[0].islower():
         return True
     # Contains sentence-like markers
-    sentence_markers = (' is ', ' are ', ' was ', ' were ', ' will ', ' can ', ' has ',
-                        ' have ', ' do ', ' does ', ' the ', ' that ', ' this ',
-                        ' your ', ' you ', ' they ', ' not ', " don't", " doesn't",
-                        " won't", " can't", " isn't", " aren't",
-                        ' ist ', ' sind ', ' hat ', ' nicht ', ' wenn ', ' weil ')
+    sentence_markers = (
+        ' is ',
+        ' are ',
+        ' was ',
+        ' were ',
+        ' will ',
+        ' can ',
+        ' has ',
+        ' have ',
+        ' do ',
+        ' does ',
+        ' the ',
+        ' that ',
+        ' this ',
+        ' your ',
+        ' you ',
+        ' they ',
+        ' not ',
+        " don't",
+        " doesn't",
+        " won't",
+        " can't",
+        " isn't",
+        " aren't",
+        ' ist ',
+        ' sind ',
+        ' hat ',
+        ' nicht ',
+        ' wenn ',
+        ' weil ',
+    )
     if any(m in lower for m in sentence_markers):
         return True
     # Ends with period (sentences, not abbreviations)
@@ -436,12 +584,40 @@ def _is_garbage_author(author: str) -> bool:
     if len(author) == 2:
         return True
     # Known truncated fragments and non-person authors
-    if author in ('Im', 'in', 'Zu', 'aus', 'und', 'Pap', 'Rep', 'Zit',
-                   'Das M', 'Der K', 'In C', 'In t', 'Pro L', 'Joe E',
-                   'Phil', 'Prof', 'orig', 'Hallo', 'Das Sch', 'Das Unm',
-                   'Der gro', 'Mein F',
-                   'AT', 'SZ', 'DKV', 'ORF', 'Bild', 'Stern', 'Milka', 'Krug',
-                   'In: E', 'Juli'):
+    if author in (
+        'Im',
+        'in',
+        'Zu',
+        'aus',
+        'und',
+        'Pap',
+        'Rep',
+        'Zit',
+        'Das M',
+        'Der K',
+        'In C',
+        'In t',
+        'Pro L',
+        'Joe E',
+        'Phil',
+        'Prof',
+        'orig',
+        'Hallo',
+        'Das Sch',
+        'Das Unm',
+        'Der gro',
+        'Mein F',
+        'AT',
+        'SZ',
+        'DKV',
+        'ORF',
+        'Bild',
+        'Stern',
+        'Milka',
+        'Krug',
+        'In: E',
+        'Juli',
+    ):
         return True
     # Starts with 'am ' + digit (truncated date reference)
     if re.match(r'^am \d', author):
@@ -450,11 +626,14 @@ def _is_garbage_author(author: str) -> bool:
     if author[0].islower() and not author.startswith(('nach ', 'von ')):
         return True
     # Descriptive phrases that aren't person names
-    if re.match(r'^(?:Dieser|Dieses|Rede |Volksmund|Lautsprecherdurchsage|Megaphondurchsage'
-                 r'|Titel |Urteil |Während |Fragen zur '
-                 r'|Anfang |Ende |Mitte |Sommer |Winter |Herbst |Frühjahr '
-                 r'|Januar |Februar |März |April |Mai |Juni |Juli |August '
-                 r'|September |Oktober |November |Dezember )', author):
+    if re.match(
+        r'^(?:Dieser|Dieses|Rede |Volksmund|Lautsprecherdurchsage|Megaphondurchsage'
+        r'|Titel |Urteil |Während |Fragen zur '
+        r'|Anfang |Ende |Mitte |Sommer |Winter |Herbst |Frühjahr '
+        r'|Januar |Februar |März |April |Mai |Juni |Juli |August '
+        r'|September |Oktober |November |Dezember )',
+        author,
+    ):
         return True
     return False
 
@@ -494,19 +673,22 @@ def _is_work_title(author: str) -> bool:
     if author in ('Bibel', 'Koran', 'Yvain'):
         return True
     # Known work titles without articles
-    if re.match(r'^(?:Briefe|Annalen|Andria|Episteln|Eklogen|Moralia|Satiren|Fragmente'
-                 r'|Nikomachische Ethik|Accattone|American History'
-                 r'|Dragonball|Rambo|Blues Brothers|Star Wars'
-                 r'|Laelius de amicitia|Orator ad|Quintilian|Tusculanae'
-                 r'|Liebesgedichte|Liebeskunst'
-                 r'|Frühling und Herbst'
-                 r'|In Catilinam'
-                 r'|Remedia Amoris|Paradoxa Stoicorum|Cato Maior'
-                 r'|Hectors Reise|Star Trek'
-                 r'|Glauben und Liebe|Geschichte von'
-                 r'|Grundgesetz der'
-                 r'|Réflexions ou sentences'
-                 r'|Interview (?:im|in |mit ))', author):
+    if re.match(
+        r'^(?:Briefe|Annalen|Andria|Episteln|Eklogen|Moralia|Satiren|Fragmente'
+        r'|Nikomachische Ethik|Accattone|American History'
+        r'|Dragonball|Rambo|Blues Brothers|Star Wars'
+        r'|Laelius de amicitia|Orator ad|Quintilian|Tusculanae'
+        r'|Liebesgedichte|Liebeskunst'
+        r'|Frühling und Herbst'
+        r'|In Catilinam'
+        r'|Remedia Amoris|Paradoxa Stoicorum|Cato Maior'
+        r'|Hectors Reise|Star Trek'
+        r'|Glauben und Liebe|Geschichte von'
+        r'|Grundgesetz der'
+        r'|Réflexions ou sentences'
+        r'|Interview (?:im|in |mit ))',
+        author,
+    ):
         return True
     # "X oder Y" pattern (work titles with alternatives)
     if ' oder ' in author and not _looks_like_person_name(author.split(' oder ')[0].strip()):
@@ -517,12 +699,15 @@ def _is_work_title(author: str) -> bool:
 def _extract_name_from_source_ref(author: str) -> str:
     """Extract person name from a source reference like 'Name in der Zeitung' or 'Name YYYY in...'."""
     # "Name YYYY in ..." or "Name (YYYY) in ..."
-    m = re.match(r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:\(?\d{4}\)?\s+)?(?:in |bei |im |zur |auf |am |vom |zu )'
-                 r'(?:der|dem|die|einer|einem|den|seinem|ihrem|seiner|ihrer|diesem|dieser'
-                 r'|einem |einer |Bezug|einem|der |dem |die '
-                 r'|Interview|Gespräch|Ansprache|Sendung|Pressemitteilung|Antwort|Brief'
-                 r'|Bundestagsdebatte|Entgegennahme|Verleihung|Zusammenhang'
-                 r'|Fernsehduell|Presseko|Situation|Zukunft)', author)
+    m = re.match(
+        r'^([A-ZÄÖÜ][\w\s.,-]+?)\s+(?:\(?\d{4}\)?\s+)?(?:in |bei |im |zur |auf |am |vom |zu )'
+        r'(?:der|dem|die|einer|einem|den|seinem|ihrem|seiner|ihrer|diesem|dieser'
+        r'|einem |einer |Bezug|einem|der |dem |die '
+        r'|Interview|Gespräch|Ansprache|Sendung|Pressemitteilung|Antwort|Brief'
+        r'|Bundestagsdebatte|Entgegennahme|Verleihung|Zusammenhang'
+        r'|Fernsehduell|Presseko|Situation|Zukunft)',
+        author,
+    )
     if m:
         candidate = m.group(1).strip().rstrip(',')
         # Must look like a person name (at least 2 words, not too long)
@@ -608,7 +793,9 @@ def _looks_like_person_name(value: str) -> bool:
         # Single-word names are suspicious but allowed for historical figures
         return len(value) > 3
     # Check that most words start with uppercase (name parts)
-    upper_words = sum(1 for w in words if w[0].isupper() or w in ('von', 'van', 'de', 'der', 'den', 'di', 'du', 'i', 'e', 'und'))
+    upper_words = sum(
+        1 for w in words if w[0].isupper() or w in ('von', 'van', 'de', 'der', 'den', 'di', 'du', 'i', 'e', 'und')
+    )
     return upper_words >= len(words) * 0.6
 
 
@@ -864,7 +1051,10 @@ def _clean_author(author: str, text: str) -> tuple[str, str | None]:
         if candidate and candidate[0].isupper() and len(candidate) > 3:
             return (candidate, None)
         return ('', None)
-    m = re.match(r'^(?:Fälschlich|Häufig|Obwohl regelmäßig)\s+(?:\S+\s+)*?(\w[\w\s.]+?)\s+(?:fälschlich\s+)?zugeschrieben', author)
+    m = re.match(
+        r'^(?:Fälschlich|Häufig|Obwohl regelmäßig)\s+(?:\S+\s+)*?(\w[\w\s.]+?)\s+(?:fälschlich\s+)?zugeschrieben',
+        author,
+    )
     if m:
         candidate = m.group(1).strip()
         if len(candidate) > 3:
@@ -898,9 +1088,12 @@ def _clean_author(author: str, text: str) -> tuple[str, str | None]:
         return ('', author)
 
     # Descriptions / wiki metadata -> move to category
-    if re.match(r'^(?:Über die |Wahlspruch |Grundannahme |Saarkundgebung |Tagebucheintrag '
-                 r'|Sperrung von |Ohne Kenntnis |Meinungsbilder/|Leitsatz von '
-                 r'|Drei Quellen |So soll er |Reaktion auf |Sprichwort aus Gespräch)', author):
+    if re.match(
+        r'^(?:Über die |Wahlspruch |Grundannahme |Saarkundgebung |Tagebucheintrag '
+        r'|Sperrung von |Ohne Kenntnis |Meinungsbilder/|Leitsatz von '
+        r'|Drei Quellen |So soll er |Reaktion auf |Sprichwort aus Gespräch)',
+        author,
+    ):
         return ('', author)
 
     # "Sprichwort + extra comment in parens" -> strip the comment
@@ -1056,7 +1249,6 @@ def run_full_cleanup() -> dict[str, int]:
             stats['category_cleaned'] += 1
             quote.category = new_category
 
-
     db.session.commit()
     logger.info('Text/author/category cleanup done: %s', dict(stats))
 
@@ -1096,21 +1288,32 @@ def run_full_cleanup() -> dict[str, int]:
 
         # Single-word 3-5 char authors not known as single-name figures → clear
         # (truncated first names like Axel, Fred, Hans, Horst, etc.)
-        if (' ' not in author and 3 <= len(author) <= 5
-                and author[0].isupper() and author not in KNOWN_SINGLE_NAMES
-                and cat != 'Werbespruch'):
+        if (
+            ' ' not in author
+            and 3 <= len(author) <= 5
+            and author[0].isupper()
+            and author not in KNOWN_SINGLE_NAMES
+            and cat != 'Werbespruch'
+        ):
             quote.author = ''
             stats['truncated_firstname_cleared'] += 1
             continue
 
     db.session.commit()
-    logger.info('Post-processing done: %s', {k: v for k, v in stats.items()
-                if k in ('brand_to_werbespruch', 'truncated_firstname_cleared', 'author_category_swapped')})
+    logger.info(
+        'Post-processing done: %s',
+        {
+            k: v
+            for k, v in stats.items()
+            if k in ('brand_to_werbespruch', 'truncated_firstname_cleared', 'author_category_swapped')
+        },
+    )
 
     # --- Dedup: exact text duplicates ---
     # Strategy: add a persistent text_hash column (CRC32) with an index, then group by hash.
     # This avoids full-table scan on TEXT column.
     from models import quote_tags as quote_tags_table
+
     if db.engine.dialect.name == 'sqlite':
         text_groups = (
             db.session.query(db.func.min(Quote.id), db.func.count(Quote.id))
@@ -1123,55 +1326,48 @@ def run_full_cleanup() -> dict[str, int]:
             for min_id in keep_ids:
                 quote = db.session.get(Quote, min_id)
                 if quote:
-                    dupe_ids = [d.id for d in db.session.query(Quote.id).filter(
-                        Quote.text == quote.text, Quote.id != min_id).all()]
+                    dupe_ids = [
+                        d.id
+                        for d in db.session.query(Quote.id).filter(Quote.text == quote.text, Quote.id != min_id).all()
+                    ]
                     if dupe_ids:
-                        db.session.execute(
-                            quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(dupe_ids))
-                        )
+                        db.session.execute(quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(dupe_ids)))
                         Quote.query.filter(Quote.id.in_(dupe_ids)).delete(synchronize_session=False)
                         stats['duplicates_deleted'] += len(dupe_ids)
     else:
         # MariaDB: use a temporary hash column with index for fast grouping
         # Step 1: Add text_hash column if not exists
         try:
-            db.session.execute(db.text(
-                'ALTER TABLE quote ADD COLUMN text_hash INT UNSIGNED NULL'
-            ))
+            db.session.execute(db.text('ALTER TABLE quote ADD COLUMN text_hash INT UNSIGNED NULL'))
             db.session.commit()
             logger.info('Added text_hash column')
         except Exception:
             db.session.rollback()  # column already exists
 
         # Step 2: Populate hash column in batches
-        db.session.execute(db.text(
-            'UPDATE quote SET text_hash = CRC32(text) WHERE text_hash IS NULL'
-        ))
+        db.session.execute(db.text('UPDATE quote SET text_hash = CRC32(text) WHERE text_hash IS NULL'))
         db.session.commit()
         logger.info('Populated text_hash column')
 
         # Step 3: Add index if not exists
         try:
-            db.session.execute(db.text(
-                'ALTER TABLE quote ADD INDEX idx_text_hash (text_hash)'
-            ))
+            db.session.execute(db.text('ALTER TABLE quote ADD INDEX idx_text_hash (text_hash)'))
             db.session.commit()
             logger.info('Added text_hash index')
         except Exception:
             db.session.rollback()  # index already exists
 
         # Step 4: Find duplicate hash groups (fast with index)
-        hash_groups = db.session.execute(db.text(
-            'SELECT text_hash, COUNT(*) as cnt FROM quote '
-            'GROUP BY text_hash HAVING cnt > 1'
-        )).fetchall()
+        hash_groups = db.session.execute(
+            db.text('SELECT text_hash, COUNT(*) as cnt FROM quote GROUP BY text_hash HAVING cnt > 1')
+        ).fetchall()
         logger.info('Found %d hash groups with potential duplicates', len(hash_groups))
 
         for text_hash, cnt in hash_groups:
             # Get all IDs with this hash, ordered by ID
-            rows = db.session.execute(db.text(
-                'SELECT id FROM quote WHERE text_hash = :h ORDER BY id'
-            ), {'h': text_hash}).fetchall()
+            rows = db.session.execute(
+                db.text('SELECT id FROM quote WHERE text_hash = :h ORDER BY id'), {'h': text_hash}
+            ).fetchall()
             if len(rows) < 2:
                 continue
             # Group by exact text within this hash bucket
@@ -1189,9 +1385,7 @@ def run_full_cleanup() -> dict[str, int]:
                     seen_texts[quote.text] = qid
             if dupe_ids:
                 # Delete quote_tags entries first, then quotes
-                db.session.execute(
-                    quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(dupe_ids))
-                )
+                db.session.execute(quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(dupe_ids)))
                 Quote.query.filter(Quote.id.in_(dupe_ids)).delete(synchronize_session=False)
 
     db.session.flush()
@@ -1201,38 +1395,38 @@ def run_full_cleanup() -> dict[str, int]:
     # Quotes with Arabic, CJK, Cyrillic etc. authors are from malformed CSV imports
     # Only scan distinct authors to find non-Latin ones, then bulk-delete by author
     # Must delete quote_tags first due to FK constraint
-    distinct_authors = db.session.query(Quote.author).filter(
-        Quote.author != '', Quote.author.isnot(None)
-    ).distinct().all()
+    distinct_authors = (
+        db.session.query(Quote.author).filter(Quote.author != '', Quote.author.isnot(None)).distinct().all()
+    )
     non_latin_authors = [a[0] for a in distinct_authors if _has_non_latin_chars(a[0])]
     if non_latin_authors:
         for batch_start in range(0, len(non_latin_authors), 100):
-            batch = non_latin_authors[batch_start:batch_start + 100]
+            batch = non_latin_authors[batch_start : batch_start + 100]
             # Get IDs of quotes to delete
-            ids_to_delete = [q.id for q in
-                             db.session.query(Quote.id).filter(Quote.author.in_(batch)).all()]
+            ids_to_delete = [q.id for q in db.session.query(Quote.id).filter(Quote.author.in_(batch)).all()]
             if ids_to_delete:
                 # Delete quote_tags entries first, then quotes
-                db.session.execute(
-                    quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(ids_to_delete))
-                )
+                db.session.execute(quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(ids_to_delete)))
                 count = Quote.query.filter(Quote.id.in_(ids_to_delete)).delete(synchronize_session=False)
                 stats['non_latin_deleted'] += count
         db.session.flush()
         logger.info('Deleted %d quotes with non-Latin authors', stats['non_latin_deleted'])
 
     # --- Garbage quotes: empty or placeholder text ---
-    garbage_ids = [q.id for q in db.session.query(Quote.id).filter(
-        db.or_(
-            Quote.text == '',
-            Quote.text.is_(None),
-            db.func.length(db.func.trim(Quote.text)) == 0,
+    garbage_ids = [
+        q.id
+        for q in db.session.query(Quote.id)
+        .filter(
+            db.or_(
+                Quote.text == '',
+                Quote.text.is_(None),
+                db.func.length(db.func.trim(Quote.text)) == 0,
+            )
         )
-    ).all()]
+        .all()
+    ]
     if garbage_ids:
-        db.session.execute(
-            quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(garbage_ids))
-        )
+        db.session.execute(quote_tags_table.delete().where(quote_tags_table.c.quote_id.in_(garbage_ids)))
         Quote.query.filter(Quote.id.in_(garbage_ids)).delete(synchronize_session=False)
         stats['garbage_deleted'] += len(garbage_ids)
 

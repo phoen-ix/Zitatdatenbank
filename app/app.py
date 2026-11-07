@@ -4,28 +4,24 @@ import logging
 import os
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
+from urllib.parse import quote as urlquote
+from urllib.parse import urlparse
 
 import click
-from urllib.parse import quote as urlquote, urlparse
-
-from flask import Flask, Response, g, session, request, redirect, url_for, flash, jsonify, render_template
+from flask import Flask, Response, flash, g, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFError
 from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash
 
-from extensions import db, csrf, migrate, limiter, login_manager
-from helpers import (_, get_setting, get_active_theme, hex_to_rgb, is_dark_theme, get_cached_result,
-                     same_site_referrer)
-from config import DEFAULT_THEME
+from extensions import csrf, db, limiter, login_manager, migrate
+from helpers import _, get_active_theme, get_cached_result, get_setting, hex_to_rgb, is_dark_theme, same_site_referrer
 
 
 def setup_logging() -> None:
     log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(
-        '%(asctime)s %(levelname)s [%(name)s] %(message)s'
-    ))
+    handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s'))
     root = logging.getLogger()
     root.setLevel(getattr(logging, log_level, logging.INFO))
     root.addHandler(handler)
@@ -41,6 +37,7 @@ if os.environ.get('BEHIND_PROXY') == '1':
     # Trust one reverse proxy's X-Forwarded-* headers so rate limits and
     # redirects see the real client address and host.
     from werkzeug.middleware.proxy_fix import ProxyFix
+
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 _secret = os.environ.get('SECRET_KEY', '')
@@ -49,8 +46,7 @@ if not _secret or _secret == 'change-this-to-a-random-secret-key':
         _secret = 'test-key-not-for-production'
     else:
         raise RuntimeError(
-            'SECRET_KEY is not set or is the insecure default. '
-            'Set a strong random value in your .env file.'
+            'SECRET_KEY is not set or is the insecure default. Set a strong random value in your .env file.'
         )
 app.config['SECRET_KEY'] = _secret
 
@@ -63,14 +59,14 @@ if not _db_uri:
             _db_uri = 'sqlite://'
         else:
             raise RuntimeError(
-                'DB_USER and DB_PASSWORD must be set in your .env file '
-                '(or set SQLALCHEMY_DATABASE_URI directly).'
+                'DB_USER and DB_PASSWORD must be set in your .env file (or set SQLALCHEMY_DATABASE_URI directly).'
             )
     else:
         _db_host = os.environ.get('DB_HOST', 'localhost')
         _db_port = os.environ.get('DB_PORT', '3306')
         _db_name = os.environ.get('DB_NAME', 'zitatdatenbank')
-        _db_uri = f'mysql+pymysql://{urlquote(_db_user, safe="")}:{urlquote(_db_pass, safe="")}@{_db_host}:{_db_port}/{_db_name}'
+        _db_cred = f'{urlquote(_db_user, safe="")}:{urlquote(_db_pass, safe="")}'
+        _db_uri = f'mysql+pymysql://{_db_cred}@{_db_host}:{_db_port}/{_db_name}'
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
@@ -88,9 +84,10 @@ limiter.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 
-import models  # noqa: F401
+# After the extensions: models and routes import them initialised.
+import models  # noqa: E402
+from routes import register_blueprints  # noqa: E402
 
-from routes import register_blueprints
 register_blueprints(app)
 
 
@@ -167,8 +164,7 @@ def inject_globals():
         theme_navbar_rgb=hex_to_rgb(theme.get('color_navbar', '#6b4c3b')),
         is_dark=is_dark_theme(theme),
         csp_nonce=nonce,
-        site_name=get_cached_result('site_name',
-            lambda: get_setting('site_name', 'Zitatdatenbank')),
+        site_name=get_cached_result('site_name', lambda: get_setting('site_name', 'Zitatdatenbank')),
         current_lang=session.get('lang', 'de'),
     )
 
@@ -183,7 +179,7 @@ def set_security_headers(response: Response) -> Response:
         script_src = f"'self' 'nonce-{nonce}'" if nonce else "'self'"
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            f"script-src {script_src}; "
+            f'script-src {script_src}; '
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data:; "
             "font-src 'self'; "
@@ -200,6 +196,7 @@ def _migrate_db():
     """Bring the schema to the migration head. A database from before the migrations
     (tables made by create_all, no alembic_version) is stamped: it already has the baseline."""
     from flask_migrate import stamp, upgrade
+
     tables = db.inspect(db.engine).get_table_names()
     if 'quote' in tables and 'alembic_version' not in tables:
         db.create_all()  # tables a very old install may lack; the baseline has them all
@@ -216,6 +213,7 @@ def import_quotes_cmd(path):
     """Import quotes from a SQL dump file."""
     _migrate_db()
     from import_service import import_quotes_from_sql
+
     if not os.path.exists(path):
         click.echo(f'File not found: {path}')
         return
@@ -230,6 +228,7 @@ def import_csv_cmd(path, default_tags):
     """Import quotes from a CSV file (columns: quote, author, category)."""
     _migrate_db()
     from import_service import import_quotes_from_csv
+
     if not os.path.exists(path):
         click.echo(f'File not found: {path}')
         return
@@ -243,6 +242,7 @@ def cleanup_quotes_cmd():
     """Clean up quote data: fix wiki markup, truncated authors, duplicates."""
     _migrate_db()
     from cleanup_service import run_full_cleanup
+
     stats = run_full_cleanup()
     for key, val in stats.items():
         click.echo(f'{key}: {val}')
@@ -299,6 +299,7 @@ def _auto_import():
         if os.path.exists(path):
             logger.info('       Importing German quotes from %s ...', path)
             from import_service import import_quotes_from_sql
+
             imported = import_quotes_from_sql(path)
             logger.info('       Imported %d German quotes.', imported)
             break
@@ -308,6 +309,7 @@ def _auto_import():
         if os.path.exists(path):
             logger.info('       Importing English quotes from %s ...', path)
             from import_service import import_quotes_from_csv
+
             tag_names = ['English', 'Englisch', 'Source: Kaggle']
             imported = import_quotes_from_csv(path, tag_names)
             logger.info('       Imported %d English quotes.', imported)
@@ -316,8 +318,9 @@ def _auto_import():
 
 def _auto_cleanup():
     """Run quote cleanup if version is outdated. Uses a version Setting to avoid re-running."""
-    from helpers import get_setting, set_setting
     from cleanup_service import CLEANUP_VERSION
+    from helpers import get_setting, set_setting
+
     current = int(get_setting('cleanup_version', '0'))
     if current >= CLEANUP_VERSION:
         logger.info('       Cleanup already at v%d, nothing to do.', current)
@@ -325,9 +328,11 @@ def _auto_cleanup():
     count = db.session.query(models.Quote).count()
     if count == 0:
         return
-    logger.info('       Cleaning up %d quotes (v%d → v%d)... this may take a few minutes.',
-                count, current, CLEANUP_VERSION)
+    logger.info(
+        '       Cleaning up %d quotes (v%d → v%d)... this may take a few minutes.', count, current, CLEANUP_VERSION
+    )
     from cleanup_service import run_full_cleanup
+
     stats = run_full_cleanup()
     set_setting('cleanup_version', str(CLEANUP_VERSION))
     logger.info('       Cleanup complete: %s', stats)
@@ -337,6 +342,7 @@ def _auto_migrate_tags():
     """Migrate category field to tags (one-time): quotes without tags (the German SQL
     import) get the default German tags plus their category. Tagged quotes keep their tags."""
     from helpers import get_setting, set_setting
+
     if get_setting('tags_migrated', '') == '1':
         logger.info('       Tags already migrated.')
         return
@@ -409,10 +415,12 @@ def _ensure_fulltext_indexes():
     if db.engine.dialect.name == 'sqlite':
         return
     try:
-        result = db.session.execute(db.text(
-            "SELECT INDEX_NAME FROM information_schema.STATISTICS "
-            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND INDEX_NAME = 'ft_quote_text'"
-        ))
+        result = db.session.execute(
+            db.text(
+                'SELECT INDEX_NAME FROM information_schema.STATISTICS '
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND INDEX_NAME = 'ft_quote_text'"
+            )
+        )
         if result.fetchone():
             logger.info('       FULLTEXT indexes already exist.')
             return
@@ -435,12 +443,14 @@ else:
     from sqlalchemy.exc import OperationalError
 
     _startup_start = time.monotonic()
-    logger.info('='*60)
+    logger.info('=' * 60)
     logger.info('  Zitatdatenbank — Starting up')
-    logger.info('='*60)
+    logger.info('=' * 60)
     if not _cookie_secure:
-        logger.warning('SESSION_COOKIE_SECURE=false: session cookies also go over plain HTTP. '
-                       'Use this only on a trusted network; behind HTTPS leave it at true.')
+        logger.warning(
+            'SESSION_COOKIE_SECURE=false: session cookies also go over plain HTTP. '
+            'Use this only on a trusted network; behind HTTPS leave it at true.'
+        )
 
     max_retries = 5
     for attempt in range(1, max_retries + 1):
@@ -467,9 +477,9 @@ else:
                 _ensure_fulltext_indexes()
 
             _elapsed = time.monotonic() - _startup_start
-            logger.info('='*60)
+            logger.info('=' * 60)
             logger.info('  Startup complete in %.1fs — ready to serve', _elapsed)
-            logger.info('='*60)
+            logger.info('=' * 60)
             break
         except OperationalError:
             if attempt == max_retries:
