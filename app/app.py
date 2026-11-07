@@ -71,8 +71,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# Secure-only unless SESSION_COOKIE_SECURE=false (plain HTTP on a LAN); always off in tests.
+_cookie_secure = os.environ.get('SESSION_COOKIE_SECURE', 'true').strip().lower() not in ('0', 'false', 'no', 'off')
 if os.environ.get('FLASK_TESTING') != '1':
-    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_SECURE'] = _cookie_secure
 
 db.init_app(app)
 migrate.init_app(app, db, directory=os.path.join(app.root_path, 'migrations'))
@@ -431,6 +433,9 @@ else:
     logger.info('='*60)
     logger.info('  Zitatdatenbank — Starting up')
     logger.info('='*60)
+    if not _cookie_secure:
+        logger.warning('SESSION_COOKIE_SECURE=false: session cookies also go over plain HTTP. '
+                       'Use this only on a trusted network; behind HTTPS leave it at true.')
 
     max_retries = 5
     for attempt in range(1, max_retries + 1):

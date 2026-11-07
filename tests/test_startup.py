@@ -179,3 +179,12 @@ def test_cli_stamps_a_database_from_before_the_migrations(tmp_path):
     assert len(_alembic_version(tmp_path / 'cli.db')) == 1
     with sqlite3.connect(tmp_path / 'cli.db') as con:
         assert con.execute('SELECT text FROM quote').fetchall() == [('kept',)]
+
+
+def test_session_cookie_secure_defaults_on_and_can_be_switched_off(tmp_path):
+    code = "import app; print(app.app.config['SESSION_COOKIE_SECURE'])"
+    for value, expected in ((None, 'True'), ('false', 'False'), ('true', 'True')):
+        extra = {'SESSION_COOKIE_SECURE': value} if value else {}
+        r = _run_cli(tmp_path, sys.executable, '-c', code, PYTHONPATH=str(APP_DIR),
+                     FLASK_RUN_FROM_CLI='true', **extra)
+        assert r.stdout.strip() == expected, r.stderr

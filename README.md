@@ -38,7 +38,7 @@ docker compose up -d
   - abgeschnittene Autoren
   - nicht-lateinische Schriftzeichen
   - Duplikate (Deduplizierung via CRC32-indiziertem Hashing)
-- **HTTPS:** Session-Cookies sind `Secure`. Über reines HTTP funktionieren Anmeldung, Formulare (CSRF) und Sprachwechsel nur unter `http://localhost`; auf einem Server die App hinter einen HTTPS-Reverse-Proxy stellen.
+- **HTTPS:** Session-Cookies sind `Secure`. Über reines HTTP funktionieren Anmeldung, Formulare (CSRF) und Sprachwechsel nur unter `http://localhost`; auf einem Server die App hinter einen HTTPS-Reverse-Proxy stellen. Nur in einem vertrauenswürdigen Netz ohne HTTPS: `SESSION_COOKIE_SECURE=false` (die App warnt beim Start).
 - **MariaDB-Upgrade bestehender Installationen:** Der `db`-Service setzt `MARIADB_AUTO_UPGRADE=1`, daher wird `mariadb-data/` beim ersten Start mit einer neueren Major-Version automatisch aktualisiert.
   - Vorher einen geprüften Dump anlegen (`docker compose exec db mariadb-dump ...`): Ein Major-Upgrade lässt sich nicht zurückrollen.
 
@@ -180,6 +180,7 @@ Alle Werte stehen in `.env.example`; `docker-compose.yml` reicht sie an die Cont
 | `WEB_PORT` | Host-Port der App | `5000` |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Admin beim ersten Start | `admin`, — (Pflicht) |
 | `LOG_LEVEL` | Log-Level | `INFO` |
+| `SESSION_COOKIE_SECURE` | `false`: Session-Cookies auch über reines HTTP (nur vertrauenswürdiges Netz) | `true` |
 
 Technik: Python 3.15 (Image `python:3.15.2-slim-trixie`), Flask 3.1 mit SQLAlchemy, gunicorn, MariaDB 12.3, Bootstrap 5.3 und Bootstrap Icons (selbst gehostet).
 
@@ -286,7 +287,7 @@ docker compose up -d
   - truncated authors
   - non-Latin scripts
   - duplicates (deduplication via CRC32-indexed hashing)
-- **HTTPS:** session cookies are `Secure`. Over plain HTTP, login, forms (CSRF) and the language switch only work on `http://localhost`; on a server, put the app behind an HTTPS reverse proxy.
+- **HTTPS:** session cookies are `Secure`. Over plain HTTP, login, forms (CSRF) and the language switch only work on `http://localhost`; on a server, put the app behind an HTTPS reverse proxy. Only on a trusted network without HTTPS: `SESSION_COOKIE_SECURE=false` (the app warns at startup).
 - **Upgrading an existing install to a newer MariaDB major:** the `db` service sets `MARIADB_AUTO_UPGRADE=1`, so the container upgrades `mariadb-data/` in place on its first start.
   - Take a verified dump first (`docker compose exec db mariadb-dump ...`): a major-version upgrade cannot be rolled back.
 
@@ -428,6 +429,7 @@ Every value is in `.env.example`; `docker-compose.yml` passes them to the contai
 | `WEB_PORT` | host port of the app | `5000` |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | admin created on first start | `admin`, — (required) |
 | `LOG_LEVEL` | log level | `INFO` |
+| `SESSION_COOKIE_SECURE` | `false`: session cookies over plain HTTP too (trusted network only) | `true` |
 
 Stack: Python 3.15 (image `python:3.15.2-slim-trixie`), Flask 3.1 with SQLAlchemy, gunicorn, MariaDB 12.3, Bootstrap 5.3 and Bootstrap Icons (self-hosted).
 
