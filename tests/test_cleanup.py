@@ -951,3 +951,15 @@ class TestRunFullCleanup:
         result = runner.invoke(args=['cleanup-quotes'])
         assert result.exit_code == 0
         assert 'total_quotes' in result.output
+
+
+def test_iter_quotes_walks_every_batch_and_flushes(app, make_quote):
+    from cleanup_service import _iter_quotes
+    ids = [make_quote().id for _ in range(5)]
+    seen = []
+    for q in _iter_quotes(batch=2):
+        seen.append(q.id)
+        q.author = 'Changed'
+    assert seen == ids
+    db.session.expire_all()
+    assert {q.author for q in Quote.query.all()} == {'Changed'}

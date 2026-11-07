@@ -1003,15 +1003,24 @@ def _clean_category(category: str) -> str:
     return category
 
 
+def _iter_quotes(batch: int = 1000):
+    """All quotes in id order, `batch` rows per query, flushing the changes after each batch.
+
+    Keyset batches, not yield_per: a streaming cursor cannot share its connection with the flushes."""
+    last_id = 0
+    while rows := Quote.query.filter(Quote.id > last_id).order_by(Quote.id).limit(batch).all():
+        yield from rows
+        db.session.flush()
+        last_id = rows[-1].id
+
+
 def run_full_cleanup() -> dict[str, int]:
     """Run all cleanup steps on the quote database. Returns a stats dict."""
     stats: Counter = Counter()
 
     # --- Text cleanup (all quotes, batched to limit memory) ---
     stats['total_quotes'] = db.session.query(db.func.count(Quote.id)).scalar() or 0
-    all_quotes = Quote.query.yield_per(1000).all()
-
-    for i, quote in enumerate(all_quotes):
+    for quote in _iter_quotes():
         # Text cleanup
         new_text = _clean_text(quote.text)
         if new_text != quote.text:
@@ -1047,16 +1056,12 @@ def run_full_cleanup() -> dict[str, int]:
             stats['category_cleaned'] += 1
             quote.category = new_category
 
-        # Flush in batches to avoid memory/transaction issues
-        if (i + 1) % 1000 == 0:
-            db.session.flush()
 
     db.session.commit()
     logger.info('Text/author/category cleanup done: %s', dict(stats))
 
     # --- Post-processing: context-dependent fixes (need category info) ---
-    all_quotes = Quote.query.yield_per(1000).all()
-    for i, quote in enumerate(all_quotes):
+    for quote in _iter_quotes():
         author = (quote.author or '').strip()
         cat = (quote.category or '').strip()
         if not author:
@@ -1097,9 +1102,6 @@ def run_full_cleanup() -> dict[str, int]:
             quote.author = ''
             stats['truncated_firstname_cleared'] += 1
             continue
-
-        if (i + 1) % 1000 == 0:
-            db.session.flush()
 
     db.session.commit()
     logger.info('Post-processing done: %s', {k: v for k, v in stats.items()
