@@ -21,6 +21,11 @@ _db_port = os.environ.get('DB_PORT', '3306')
 _db_name = os.environ.get('DB_NAME', 'zitatdatenbank')
 
 
+def _client_env() -> dict[str, str]:
+    # The password via MYSQL_PWD, not -p: argv is readable by every process on the host.
+    return {**os.environ, 'MYSQL_PWD': _db_pass}
+
+
 def _backup_log(level: str, message: str) -> None:
     db.session.add(BackupLog(level=level, message=message))
     db.session.commit()
@@ -45,15 +50,14 @@ def run_backup() -> tuple[bool, str]:
             dump_path = os.path.join(tmp, 'dump.sql')
             with open(dump_path, 'wb') as dump_file:
                 result = subprocess.run(
-                    ['mysqldump', '-h', _db_host, '-P', _db_port,
-                     f'-u{_db_user}', f'-p{_db_pass}',
+                    ['mysqldump', '-h', _db_host, '-P', _db_port, f'-u{_db_user}',
                      '--add-drop-table',
                      '--ignore-table', f'{_db_name}.setting',
                      '--ignore-table', f'{_db_name}.admin_user',
                      '--ignore-table', f'{_db_name}.backup_log',
                      '--ignore-table', f'{_db_name}.alembic_version',
                      _db_name],
-                    stdout=dump_file, stderr=subprocess.PIPE, timeout=300
+                    stdout=dump_file, stderr=subprocess.PIPE, timeout=300, env=_client_env(),
                 )
             if result.returncode != 0:
                 err = result.stderr.decode(errors='replace')[:300]
@@ -99,13 +103,11 @@ def restore_backup(filename: str) -> tuple[bool, str]:
 
             with open(dump_path, 'rb') as dump_file:
                 result = subprocess.run(
-                    ['mariadb', '-h', _db_host, '-P', _db_port,
-                     f'-u{_db_user}', f'-p{_db_pass}', _db_name],
+                    ['mariadb', '-h', _db_host, '-P', _db_port, f'-u{_db_user}', _db_name],
                     stdin=dump_file,
-                    stderr=subprocess.PIPE, timeout=300
+                    stderr=subprocess.PIPE, timeout=300, env=_client_env(),
                 )
             if result.returncode != 0:
-                err = result.stderr.decode(errors='replace')[:300]
                 _backup_log('ERROR', 'Restore failed')
                 return False, 'Database restore failed'
 

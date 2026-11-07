@@ -244,6 +244,33 @@ def test_admin_backup_create(admin_client, app, tmp_path):
         backup_service.BACKUP_DIR = original
 
 
+def test_backup_and_restore_pass_password_via_env(app, tmp_path, monkeypatch):
+    """The DB password goes to mysqldump/mariadb as MYSQL_PWD, never on the command line."""
+    import subprocess
+    import tarfile
+    import backup_service
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append((cmd, kw['env']))
+        return subprocess.CompletedProcess(cmd, 0, stderr=b'')
+
+    monkeypatch.setattr(backup_service, '_db_pass', 's3cret')
+    monkeypatch.setattr(backup_service, 'BACKUP_DIR', str(tmp_path))
+    monkeypatch.setattr(backup_service.subprocess, 'run', fake_run)
+    with app.app_context():
+        ok, name = backup_service.run_backup()
+        assert ok
+        with tarfile.open(tmp_path / name, 'w:gz') as tar:
+            (tmp_path / 'dump.sql').write_text('')
+            tar.add(tmp_path / 'dump.sql', arcname='dump.sql')
+        assert backup_service.restore_backup(name)[0]
+    assert [c[0][0] for c in calls] == ['mysqldump', 'mariadb']
+    for cmd, env in calls:
+        assert not any('s3cret' in a for a in cmd)
+        assert env['MYSQL_PWD'] == 's3cret'
+
+
 def test_admin_edit_quote_get(admin_client, app, make_quote):
     with app.app_context():
         q = make_quote(text='Edit me', author='Author')
