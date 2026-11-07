@@ -56,8 +56,19 @@ def test_logout(client, app, make_admin):
     with app.app_context():
         make_admin(username='admin', password='secret')
     client.post('/login', data={'username': 'admin', 'password': 'secret'})
-    response = client.get('/logout', follow_redirects=True)
+    assert client.get('/logout').status_code == 405
+    response = client.post('/logout', follow_redirects=True)
     assert response.status_code == 200
+    assert client.get('/admin/').status_code == 302
+
+
+def test_logout_needs_the_csrf_token(admin_client, app, monkeypatch):
+    """A cross-site POST (no token) must not sign the admin out."""
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
+    admin_client.post('/logout')
+    assert admin_client.get('/admin/').status_code == 200
+    page = admin_client.get('/admin/').get_data(as_text=True)
+    assert 'action="/logout"' in page and 'name="csrf_token"' in page
 
 
 def test_admin_dashboard(admin_client, app):

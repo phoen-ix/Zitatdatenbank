@@ -77,7 +77,7 @@ for (const lang of ['de', 'en'] as const) {
     if (lang === 'en') await page.goto('/set-lang/en')
     for (const [path, check] of PUBLIC) await visit(page, path.replace('{id}', String(id)), () => check(page, l))
     await visit(page, '/login', () => expect(page.getByLabel(l.user)).toBeVisible())
-    await visit(page, '/logout', () => expect(page.getByText(l.random)).toBeVisible())
+    expect((await page.request.get('/logout')).status(), 'GET /logout').toBe(405)
 
     for (const [path] of ADMIN.slice(1)) {
       const res = await page.request.get(path.replace('{id}', String(id)), { maxRedirects: 0 })
@@ -92,7 +92,7 @@ for (const lang of ['de', 'en'] as const) {
     for (const [path, check] of [...PUBLIC, ...ADMIN]) {
       await visit(page, path.replace('{id}', String(id)), () => check(page, l))
     }
-    await page.goto('/logout')
+    await page.getByRole('button', { name: lang === 'de' ? 'Abmelden' : 'Logout' }).click()
     await expect(page.getByRole('link', { name: lang === 'de' ? 'Anmelden' : 'Login' })).toBeVisible()
   })
 }

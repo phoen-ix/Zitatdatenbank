@@ -161,7 +161,10 @@
                         <a class="nav-link" href="{{ url_for('admin.dashboard') }}">{{ _('nav_admin') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.logout') }}">{{ _('nav_logout') }}</a>
+                        <form method="post" action="{{ url_for('auth.logout') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="nav-link">{{ _('nav_logout') }}</button>
+                        </form>
                     </li>
                     {% else %}
                     <li class="nav-item">

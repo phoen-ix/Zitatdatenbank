@@ -30,7 +30,7 @@ error (CSP), no 5xx, no failed CSS/JS/font/icon request. Guests' admin routes ar
 | `/credits` | GET | ✅ sweep › guest | ✅ sweep › admin |
 | `/login` | GET | ✅ sweep › guest | ✅ sweep › admin (on to the dashboard) |
 | `/login` | POST | ✅ auth › the admin signs in from the navbar and out again | — (signed in: redirect, swept) |
-| `/logout` | GET | ✅ sweep › guest | ✅ sweep › admin |
+| `/logout` | POST (GET: 405) | ✅ sweep › guest (405 on GET) | ✅ auth › the admin signs in from the navbar and out again, sweep › admin |
 | `/set-lang/<lang>` | GET | ✅ public › the language switch keeps the page and lasts for the session | ✅ sweep › admin (en) |
 | `/admin/` | GET | ✅ sweep › guest (302) | ✅ sweep › admin |
 | `/admin/quotes` (+ `q`, `cursor`) | GET | ✅ sweep › guest (302) | ✅ sweep › admin |

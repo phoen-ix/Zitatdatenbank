@@ -9,7 +9,7 @@ test('the admin signs in from the navbar and out again', async ({ page }) => {
   await login(page)
   await heading(page, 'Admin-Dashboard')
   await expect(page.getByRole('link', { name: 'Verwaltung' })).toBeVisible()
-  await page.getByRole('link', { name: 'Abmelden' }).click()
+  await page.getByRole('button', { name: 'Abmelden' }).click()
   await expect(page.getByText('Zufallszitat')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Anmelden' })).toBeVisible()
   const res = await page.request.get('/admin/', { maxRedirects: 0 })
