@@ -85,7 +85,7 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
   `Cache-Control: no-store`.
 - Performance: keyset pagination (cursor) on browse/admin lists, FastPagination (no COUNT),
   `selectinload(Quote.tags)`, FULLTEXT MATCH on MariaDB (boolean operators stripped), cached tag-name map.
-- Security: CSRF on all forms, login 10/min, search, `/api/random` and `/api/quotes` 30/min, `/api/quotes/<id>` 60/min,
+- Security: CSRF on all forms (logout is a POST too), `BEHIND_PROXY=1` → ProxyFix (one hop, per-client limits), login 10/min, search, `/api/random` and `/api/quotes` 30/min, `/api/quotes/<id>` 60/min,
   `X-RateLimit-*` headers, `next` must be a relative path, Referer redirects same-host only, backup
   filenames whitelisted, restore extracts only `dump.sql` and rejects links.
 - Backups exclude setting/admin_user/backup_log/alembic_version; restore resets `cleanup_version`, and

@@ -39,6 +39,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-true}
+      - BEHIND_PROXY=${BEHIND_PROXY:-0}
     depends_on:
       db:
         condition: service_healthy

@@ -37,6 +37,11 @@ logger = logging.getLogger(__name__)
 
 
 app = Flask(__name__)
+if os.environ.get('BEHIND_PROXY') == '1':
+    # Trust one reverse proxy's X-Forwarded-* headers so rate limits and
+    # redirects see the real client address and host.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 _secret = os.environ.get('SECRET_KEY', '')
 if not _secret or _secret == 'change-this-to-a-random-secret-key':

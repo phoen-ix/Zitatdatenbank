@@ -188,3 +188,13 @@ def test_session_cookie_secure_defaults_on_and_can_be_switched_off(tmp_path):
         r = _run_cli(tmp_path, sys.executable, '-c', code, PYTHONPATH=str(APP_DIR),
                      FLASK_RUN_FROM_CLI='true', **extra)
         assert r.stdout.strip() == expected, r.stderr
+
+
+def test_behind_proxy_takes_the_client_address_from_x_forwarded_for(tmp_path):
+    code = ("import app; c = app.app.test_client(); from flask import request\n"
+            "app.app.add_url_rule('/ip', 'ip', lambda: request.remote_addr)\n"
+            "print(c.get('/ip', headers={'X-Forwarded-For': '203.0.113.9'}).get_data(as_text=True))")
+    for value, expected in (('0', '127.0.0.1'), ('1', '203.0.113.9')):
+        r = _run_cli(tmp_path, sys.executable, '-c', code, PYTHONPATH=str(APP_DIR),
+                     FLASK_RUN_FROM_CLI='true', BEHIND_PROXY=value)
+        assert r.stdout.strip() == expected, r.stderr
