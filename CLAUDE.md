@@ -10,7 +10,7 @@ self-hosted, gunicorn in Docker. README.md (German first, then English) is the u
 python3 -m pytest                       # tests (conftest sets FLASK_TESTING, SQLite in-memory)
 # local dev server, run in app/ (SQLite in instance/dev.db, admin admin/admin)
 export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-flask create-admin --username admin --password admin   # CLI commands create the tables
+flask create-admin --username admin --password admin   # the app's CLI commands migrate the schema
 flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
 flask run
 # docs screenshots: throwaway stack + Playwright tour (needs `npm ci` + chromium in e2e/)
@@ -26,9 +26,14 @@ tags), `cleanup-quotes`, `create-admin --username X --password Y` (also resets a
 - **No `app/__init__.py`:** with it the `flask` script imports `app.app` without `app/` on sys.path
   (`No module named 'extensions'`). Modules import each other flat (`from extensions import db`).
 - **Importing app.py runs the startup sequence** in server processes (gunicorn, `python app.py`):
-  create_all, admin from env, auto-import (`/data/zitate.sql`, `/data/quotes.csv` if the quote table is
+  `_migrate_db()`, admin from env, auto-import (`/data/zitate.sql`, `/data/quotes.csv` if the quote table is
   empty), versioned cleanup, one-time tag migration, FULLTEXT indexes. `flask …` commands (`flask run`
-  too; Flask sets `FLASK_RUN_FROM_CLI`) only run create_all; `FLASK_TESTING=1` skips both.
+  too; Flask sets `FLASK_RUN_FROM_CLI`) skip it; the app's own commands call `_migrate_db()` themselves,
+  `flask run`/`flask db …` touch nothing. `FLASK_TESTING=1` skips all of it (tests use create_all).
+- **Schema = Alembic** (`app/migrations/`, baseline `b7ad4755a185`): change a model → in `app/`
+  `flask db migrate -m "…"` against a DB at head, review, commit. `_migrate_db()` stamps a DB from before
+  the migrations (tables, no `alembic_version`) and upgrades everything else. env.py ignores the
+  MariaDB-only FULLTEXT indexes and the cleanup's `text_hash` column.
 - **Tag migration** (`_auto_migrate_tags`) runs whenever quotes exist and the `tags_migrated` Setting
   is unset (fresh install, after restoring a backup without any tags). It only touches quotes *without*
   tags (the SQL import creates German quotes untagged): Deutsch/German/Quelle: Zitatdatenbank + their

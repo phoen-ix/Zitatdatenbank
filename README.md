@@ -194,12 +194,12 @@ python3 -m pytest
 # Lokal starten (SQLite unter instance/dev.db, Admin admin/admin)
 cd app
 export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-flask create-admin --username admin --password admin   # legt auch die Tabellen an
+flask create-admin --username admin --password admin   # legt auch die Tabellen an (Migrationen)
 flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
 flask run      # http://localhost:5000
 ```
 
-`flask`-Befehle (auch `flask run`) legen nur die Tabellen an. Die Startsequenz läuft nur im Server (gunicorn im Docker-Image):
+Die eigenen `flask`-Befehle bringen nur das Schema auf den neuesten Stand (Alembic-Migrationen in `app/migrations/`; `flask run` und `flask db …` nicht). Die Startsequenz läuft nur im Server (gunicorn im Docker-Image):
 
 - Admin aus `ADMIN_PASSWORD`
 - Auto-Import aus `/data`
@@ -442,12 +442,12 @@ python3 -m pytest
 # Run locally (SQLite in instance/dev.db, admin admin/admin)
 cd app
 export SECRET_KEY=dev-secret SQLALCHEMY_DATABASE_URI=sqlite:///dev.db
-flask create-admin --username admin --password admin   # also creates the tables
+flask create-admin --username admin --password admin   # also creates the tables (migrations)
 flask import-csv ../e2e/docs/fixtures/quotes-en.csv --default-tags "English,Englisch,Source: Kaggle"
 flask run      # http://localhost:5000
 ```
 
-`flask` commands (`flask run` too) only create the tables. The startup sequence runs only in the server (gunicorn in the Docker image):
+The app's own `flask` commands only bring the schema up to date (Alembic migrations in `app/migrations/`; `flask run` and `flask db …` do not). The startup sequence runs only in the server (gunicorn in the Docker image):
 
 - admin from `ADMIN_PASSWORD`
 - auto-import from `/data`

@@ -75,7 +75,7 @@ if os.environ.get('FLASK_TESTING') != '1':
     app.config['SESSION_COOKIE_SECURE'] = True
 
 db.init_app(app)
-migrate.init_app(app, db)
+migrate.init_app(app, db, directory=os.path.join(app.root_path, 'migrations'))
 csrf.init_app(app)
 limiter.init_app(app)
 login_manager.init_app(app)
@@ -189,11 +189,25 @@ def set_security_headers(response: Response) -> Response:
     return response
 
 
+def _migrate_db():
+    """Bring the schema to the migration head. A database from before the migrations
+    (tables made by create_all, no alembic_version) is stamped: it already has the baseline."""
+    from flask_migrate import stamp, upgrade
+    tables = db.inspect(db.engine).get_table_names()
+    if 'quote' in tables and 'alembic_version' not in tables:
+        db.create_all()  # tables a very old install may lack; the baseline has them all
+        stamp()
+        logger.info('       Existing database stamped at the baseline migration.')
+    else:
+        upgrade()
+
+
 # CLI commands
 @app.cli.command('import-quotes')
 @click.argument('path')
 def import_quotes_cmd(path):
     """Import quotes from a SQL dump file."""
+    _migrate_db()
     from import_service import import_quotes_from_sql
     if not os.path.exists(path):
         click.echo(f'File not found: {path}')
@@ -207,6 +221,7 @@ def import_quotes_cmd(path):
 @click.option('--default-tags', default='', help='Comma-separated default tags for all imported quotes')
 def import_csv_cmd(path, default_tags):
     """Import quotes from a CSV file (columns: quote, author, category)."""
+    _migrate_db()
     from import_service import import_quotes_from_csv
     if not os.path.exists(path):
         click.echo(f'File not found: {path}')
@@ -219,6 +234,7 @@ def import_csv_cmd(path, default_tags):
 @app.cli.command('cleanup-quotes')
 def cleanup_quotes_cmd():
     """Clean up quote data: fix wiki markup, truncated authors, duplicates."""
+    _migrate_db()
     from cleanup_service import run_full_cleanup
     stats = run_full_cleanup()
     for key, val in stats.items():
@@ -230,6 +246,7 @@ def cleanup_quotes_cmd():
 @click.option('--password', prompt=True, hide_input=True)
 def create_admin_cmd(username, password):
     """Create an admin user."""
+    _migrate_db()
     existing = models.AdminUser.query.filter_by(username=username).first()
     if existing:
         existing.password_hash = generate_password_hash(password)
@@ -403,12 +420,10 @@ def _ensure_fulltext_indexes():
 
 
 # Startup sequence: only for the server (gunicorn, `python app.py`). Flask sets
-# FLASK_RUN_FROM_CLI for every `flask …` command (`flask run` too); those only need the tables.
-if os.environ.get('FLASK_TESTING') == '1':
+# FLASK_RUN_FROM_CLI for every `flask …` command (`flask run` too): the app's own commands
+# migrate the schema themselves, `flask db …` must see it untouched.
+if os.environ.get('FLASK_TESTING') == '1' or os.environ.get('FLASK_RUN_FROM_CLI') == 'true':
     pass
-elif os.environ.get('FLASK_RUN_FROM_CLI') == 'true':
-    with app.app_context():
-        db.create_all()
 else:
     from sqlalchemy.exc import OperationalError
 
@@ -423,7 +438,7 @@ else:
             with app.app_context():
                 logger.info('[1/6] Connecting to database...')
                 db.session.execute(db.text('SELECT 1'))
-                db.create_all()
+                _migrate_db()
                 logger.info('[1/6] Database connected.')
 
                 logger.info('[2/6] Checking admin user...')

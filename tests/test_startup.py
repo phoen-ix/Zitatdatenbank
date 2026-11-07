@@ -144,3 +144,38 @@ def test_entrypoint_stops_on_an_lfs_pointer(tmp_path):
     assert r.returncode == 1
     assert 'git lfs pull' in r.stderr
     assert not (tmp_path / 'zitate.sql').exists()
+
+
+def _alembic_version(db_path):
+    with sqlite3.connect(db_path) as con:
+        return con.execute('SELECT version_num FROM alembic_version').fetchall()
+
+
+def test_cli_builds_a_fresh_database_from_the_migrations(tmp_path):
+    """The migrations produce exactly the models' schema (else `flask db migrate` drifts)."""
+    from alembic.autogenerate import compare_metadata
+    from alembic.migration import MigrationContext
+    from sqlalchemy import create_engine
+    from extensions import db
+    r = _run_cli(tmp_path, sys.executable, '-m', 'flask', 'create-admin', '--username', 'cli',
+                 '--password', 'pw', PYTHONPATH=str(APP_DIR))
+    assert r.returncode == 0, r.stderr
+    assert len(_alembic_version(tmp_path / 'cli.db')) == 1
+    with create_engine(f'sqlite:///{tmp_path}/cli.db').connect() as conn:
+        assert compare_metadata(MigrationContext.configure(conn), db.metadata) == []
+
+
+def test_cli_stamps_a_database_from_before_the_migrations(tmp_path):
+    """An install whose tables came from create_all keeps its data and is stamped, not re-created."""
+    from sqlalchemy import create_engine
+    from extensions import db
+    engine = create_engine(f'sqlite:///{tmp_path}/cli.db')
+    db.metadata.create_all(engine)
+    with engine.begin() as conn:
+        conn.execute(db.text("INSERT INTO quote (text) VALUES ('kept')"))
+    r = _run_cli(tmp_path, sys.executable, '-m', 'flask', 'create-admin', '--username', 'cli',
+                 '--password', 'pw', PYTHONPATH=str(APP_DIR))
+    assert r.returncode == 0, r.stderr
+    assert len(_alembic_version(tmp_path / 'cli.db')) == 1
+    with sqlite3.connect(tmp_path / 'cli.db') as con:
+        assert con.execute('SELECT text FROM quote').fetchall() == [('kept',)]
