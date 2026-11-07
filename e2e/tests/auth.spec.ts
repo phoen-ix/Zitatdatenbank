@@ -61,7 +61,8 @@ test('a guest cannot change anything by posting to an admin action', async ({ pa
 test('a form posted with an expired CSRF token is reloaded with a message, nothing saved', async ({ adminPage: page }) => {
   const w = uid()
   await page.goto('/admin/quotes/add')
-  await page.locator('input[name=csrf_token]').evaluate((el: HTMLInputElement) => (el.value = 'expired'))
+  // the quote form's token; the nav's logout form carries its own
+  await page.locator('form', { has: page.getByLabel('Zitattext') }).locator('input[name=csrf_token]').evaluate((el: HTMLInputElement) => (el.value = 'expired'))
   await page.getByLabel('Zitattext').fill(`Forged ${w}`)
   await page.getByRole('button', { name: 'Speichern' }).click()
   await expect(toast(page)).toContainText('Das Formular war abgelaufen. Bitte noch einmal absenden.')
