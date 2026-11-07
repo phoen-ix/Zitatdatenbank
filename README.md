@@ -186,7 +186,7 @@ Technik: Python 3.15 (Image `python:3.15.2-slim-trixie`), Flask 3.1 mit SQLAlche
 ## Entwicklung
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 
 # Tests ausführen
 python3 -m pytest
@@ -434,7 +434,7 @@ Stack: Python 3.15 (image `python:3.15.2-slim-trixie`), Flask 3.1 with SQLAlchem
 ## Development
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 
 # Run tests
 python3 -m pytest
