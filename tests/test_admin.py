@@ -43,6 +43,15 @@ def test_login_failure(client, app, make_admin):
     assert response.status_code == 200
 
 
+def test_login_checks_a_hash_for_unknown_users(client, app, monkeypatch):
+    """Unknown usernames still pay for a hash check: login timing must not reveal accounts."""
+    import routes.auth as auth
+    checked = []
+    monkeypatch.setattr(auth, 'check_password_hash', lambda h, p: checked.append(h) or False)
+    client.post('/login', data={'username': 'nobody', 'password': 'x'})
+    assert checked == [auth._DUMMY_HASH]
+
+
 def test_logout(client, app, make_admin):
     with app.app_context():
         make_admin(username='admin', password='secret')
