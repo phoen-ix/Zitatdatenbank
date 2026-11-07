@@ -6,8 +6,8 @@
 #   scripts/docs-screenshots.sh [outdir]      # default: docs/screenshots
 #
 # PORT_BASE (default 25600): the app on 127.0.0.1:PORT_BASE.
-# COMPOSE_PROJECT_NAME (default zitatdatenbank_docs): never `zitatdatenbank`,
-# the project name of a checkout's own stack. ARTIFACTS: where Playwright's
+# COMPOSE_PROJECT_NAME (default zitatdatenbank_docs): must end in _e2e or _docs,
+# so teardown's `down -v` never hits a real stack. ARTIFACTS: where Playwright's
 # test results go (default: a temp dir).
 #
 # The stack has no bind mounts (docker-compose.e2e.yml), so it never reads
@@ -16,16 +16,17 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
+ARTIFACTS="$(mkdir -p "$ARTIFACTS" && cd "$ARTIFACTS" && pwd)"   # absolute: the script cds away
 cd "$ROOT"
 OUT="$(mkdir -p "${1:-docs/screenshots}" && cd "${1:-docs/screenshots}" && pwd)"
-ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
 export PORT_BASE="${PORT_BASE:-25600}"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-zitatdatenbank_docs}"
 
 case "$COMPOSE_PROJECT_NAME" in
-  zitatdatenbank | phytotron | phytotron-dev | vib | fileheron | keyb-dev)
-    echo "docs-screenshots: refusing the live project name '$COMPOSE_PROJECT_NAME'" >&2
-    exit 1 ;;
+  *_e2e | *_docs) ;;
+  *) echo "docs-screenshots: COMPOSE_PROJECT_NAME must end in _e2e or _docs, not '$COMPOSE_PROJECT_NAME'" >&2
+     exit 1 ;;
 esac
 
 # Test-only values; the stack reads nothing from a .env (--env-file /dev/null).

@@ -6,8 +6,8 @@
 #   scripts/e2e.sh [playwright args]          e.g. --grep backup, --repeat-each=3
 #
 # PORT_BASE (default 25600): the app on 127.0.0.1:PORT_BASE.
-# COMPOSE_PROJECT_NAME (default zitatdatenbank_e2e): never `zitatdatenbank`,
-# the project name of a checkout's own stack. ARTIFACTS: Playwright's test
+# COMPOSE_PROJECT_NAME (default zitatdatenbank_e2e): must end in _e2e or _docs,
+# so teardown's `down -v` never hits a real stack. ARTIFACTS: Playwright's test
 # results and HTML report, plus the stack log on failure (default: a temp dir).
 #
 # The stack has no bind mounts (docker-compose.e2e.yml): it never reads
@@ -16,16 +16,16 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
 ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
-mkdir -p "$ARTIFACTS"
+ARTIFACTS="$(mkdir -p "$ARTIFACTS" && cd "$ARTIFACTS" && pwd)"   # absolute: the script cds away
+cd "$ROOT"
 export PORT_BASE="${PORT_BASE:-25600}"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-zitatdatenbank_e2e}"
 
 case "$COMPOSE_PROJECT_NAME" in
-  zitatdatenbank | phytotron | phytotron-dev | vib | fileheron | keyb-dev)
-    echo "e2e: refusing the live project name '$COMPOSE_PROJECT_NAME'" >&2
-    exit 1 ;;
+  *_e2e | *_docs) ;;
+  *) echo "e2e: COMPOSE_PROJECT_NAME must end in _e2e or _docs, not '$COMPOSE_PROJECT_NAME'" >&2
+     exit 1 ;;
 esac
 
 # Test-only values; the stack reads nothing from a .env (--env-file /dev/null).
