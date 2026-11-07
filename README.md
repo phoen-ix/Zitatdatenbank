@@ -44,7 +44,8 @@ docker compose up -d
 
 ### Admin-Zugang
 
-- **Zugangsdaten:** `ADMIN_USERNAME` und `ADMIN_PASSWORD`; ohne `.env`-Wert setzt `docker-compose.yml` `admin`/`admin`.
+- **Zugangsdaten:** `ADMIN_USERNAME` (Standard `admin`) und `ADMIN_PASSWORD`; ohne `ADMIN_PASSWORD`, `DB_PASSWORD` oder `DB_ROOT_PASSWORD` in `.env` bricht `docker compose` mit einer Meldung ab.
+- **Bestehende Installationen ohne diese Werte** liefen mit den früheren Standards: `DB_ROOT_PASSWORD=rootchangeme` und `DB_PASSWORD=zitate` in `.env` eintragen (MariaDB übernimmt neue Passwörter nicht in ein bestehendes `mariadb-data/`).
 - **Nur beim ersten Anlegen:** Ein späteres Ändern von `ADMIN_PASSWORD` ändert das Passwort nicht. Dafür `flask create-admin --username <name> --password <neu>`.
 
 ## Funktionen
@@ -174,10 +175,10 @@ Alle Werte stehen in `.env.example`; `docker-compose.yml` reicht sie an die Cont
 | Variable | Zweck | Standard |
 |----------|-------|----------|
 | `SECRET_KEY` | Flask-Schlüssel; ohne Wert oder mit dem Beispielwert startet die App nicht | — |
-| `DB_ROOT_PASSWORD` | MariaDB-Root-Passwort | `rootchangeme` |
-| `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Datenbank und ihr Benutzer | `zitatdatenbank`, `zitate`, `zitate` |
+| `DB_ROOT_PASSWORD` | MariaDB-Root-Passwort | — (Pflicht) |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Datenbank und ihr Benutzer | `zitatdatenbank`, `zitate`, — (Pflicht) |
 | `WEB_PORT` | Host-Port der App | `5000` |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Admin beim ersten Start | `admin`, `admin` |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Admin beim ersten Start | `admin`, — (Pflicht) |
 | `LOG_LEVEL` | Log-Level | `INFO` |
 
 Technik: Python 3.15 (Image `python:3.15.2-slim-trixie`), Flask 3.1 mit SQLAlchemy, gunicorn, MariaDB 12.3, Bootstrap 5.3 und Bootstrap Icons (selbst gehostet).
@@ -291,7 +292,8 @@ docker compose up -d
 
 ### Admin Access
 
-- **Credentials:** `ADMIN_USERNAME` and `ADMIN_PASSWORD`; without a `.env` value, `docker-compose.yml` uses `admin`/`admin`.
+- **Credentials:** `ADMIN_USERNAME` (default `admin`) and `ADMIN_PASSWORD`; without `ADMIN_PASSWORD`, `DB_PASSWORD` or `DB_ROOT_PASSWORD` in `.env`, `docker compose` stops with a message.
+- **Existing installs without these values** ran on the old defaults: put `DB_ROOT_PASSWORD=rootchangeme` and `DB_PASSWORD=zitate` in `.env` (MariaDB does not apply new passwords to an existing `mariadb-data/`).
 - **Only on first creation:** changing `ADMIN_PASSWORD` later does not change the password. Use `flask create-admin --username <name> --password <new>`.
 
 ## Features
@@ -421,10 +423,10 @@ Every value is in `.env.example`; `docker-compose.yml` passes them to the contai
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `SECRET_KEY` | Flask key; the app refuses to start without one or with the example value | — |
-| `DB_ROOT_PASSWORD` | MariaDB root password | `rootchangeme` |
-| `DB_NAME`, `DB_USER`, `DB_PASSWORD` | database and its user | `zitatdatenbank`, `zitate`, `zitate` |
+| `DB_ROOT_PASSWORD` | MariaDB root password | — (required) |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD` | database and its user | `zitatdatenbank`, `zitate`, — (required) |
 | `WEB_PORT` | host port of the app | `5000` |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | admin created on first start | `admin`, `admin` |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | admin created on first start | `admin`, — (required) |
 | `LOG_LEVEL` | log level | `INFO` |
 
 Stack: Python 3.15 (image `python:3.15.2-slim-trixie`), Flask 3.1 with SQLAlchemy, gunicorn, MariaDB 12.3, Bootstrap 5.3 and Bootstrap Icons (self-hosted).

@@ -4,10 +4,10 @@ services:
     container_name: zitatdatenbank-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootchangeme}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
       MYSQL_DATABASE:      ${DB_NAME:-zitatdatenbank}
       MYSQL_USER:          ${DB_USER:-zitate}
-      MYSQL_PASSWORD:      ${DB_PASSWORD:-zitate}
+      MYSQL_PASSWORD:      ${DB_PASSWORD:?set DB_PASSWORD in .env}
       # Upgrade an existing data directory in place when the image moves to a newer major (dump first).
       MARIADB_AUTO_UPGRADE: "1"
     volumes:
@@ -34,9 +34,9 @@ services:
       - DB_PORT=3306
       - DB_NAME=${DB_NAME:-zitatdatenbank}
       - DB_USER=${DB_USER:-zitate}
-      - DB_PASSWORD=${DB_PASSWORD:-zitate}
+      - DB_PASSWORD=${DB_PASSWORD:?set DB_PASSWORD in .env}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
       db:
